@@ -67,14 +67,19 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (titleController.text.trim().isNotEmpty) {
+                      final title = titleController.text.trim();
+                      final time = timeController.text.trim().isNotEmpty ? timeController.text.trim() : 'Anytime';
+                      
+                      // Optimistic Pop: Close modal immediately
+                      Navigator.pop(ctx);
+
                       final updatedList = List<Map<String, dynamic>>.from(currentTasks);
                       updatedList.add({
-                        'title': titleController.text.trim(),
-                        'time': timeController.text.trim().isNotEmpty ? timeController.text.trim() : 'Anytime',
+                        'title': title,
+                        'time': time,
                         'completed': false,
                       });
                       await _db.syncTasks(widget.uid, updatedList);
-                      if (mounted) Navigator.pop(ctx);
                     }
                   },
                   style: ElevatedButton.styleFrom(

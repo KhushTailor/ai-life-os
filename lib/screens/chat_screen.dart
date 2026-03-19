@@ -30,7 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     // Replace with a real API key provided by the user securely. 
     // Usually injected via environment variables or remote config.
-    const apiKey = const String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'YOUR_GEMINI_API_KEY');
+    const apiKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
     
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',

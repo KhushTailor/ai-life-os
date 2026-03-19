@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui';
 import 'services/firebase_service.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -14,7 +15,6 @@ import 'screens/settings_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Using explicit options to bypass any potential Gradle initialization issues
   try {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
@@ -26,7 +26,6 @@ void main() async {
       ),
     );
   } catch (e) {
-    // If explicit options fail or conflict, fallback to default
     await Firebase.initializeApp();
   }
 
@@ -50,6 +49,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
   String? _uid;
   int _selectedIndex = 0;
   String _activeTheme = 'neon_dark';
+  String _currency = '\$';
 
   @override
   void initState() {
@@ -75,6 +75,17 @@ class _LifeOSAppState extends State<LifeOSApp> {
     });
   }
 
+  void _onCurrencyChanged(String symbol) {
+    setState(() {
+      _currency = symbol;
+    });
+  }
+
+  Future<void> _logout() async {
+    await FirebaseService().signOut();
+    setState(() { _userName = null; _uid = null; });
+  }
+
   Widget _buildCurrentScreen() {
     if (_userName == null || _uid == null) {
       return AuthScreen(
@@ -97,11 +108,9 @@ class _LifeOSAppState extends State<LifeOSApp> {
           userName: _userName!,
           uid: _uid!,
           activeTheme: _activeTheme,
+          currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
-          onLogout: () async {
-            await FirebaseService().signOut();
-            setState(() { _userName = null; _uid = null; });
-          },
+          onLogout: _logout,
         );
       case 1:
         return ChatScreen(userName: _userName!);
@@ -110,27 +119,24 @@ class _LifeOSAppState extends State<LifeOSApp> {
       case 3:
         return HabitScreen(uid: _uid!);
       case 4:
-        return FinanceScreen(uid: _uid!);
+        return FinanceScreen(uid: _uid!, currency: _currency);
       case 5:
         return SettingsScreen(
           activeTheme: _activeTheme,
           onThemeChanged: _onThemeChanged,
           userName: _userName!,
-          onLogout: () async {
-            await FirebaseService().signOut();
-            setState(() { _userName = null; _uid = null; });
-          },
+          currency: _currency,
+          onCurrencyChanged: _onCurrencyChanged,
+          onLogout: _logout,
         );
       default:
         return DashboardScreen(
           userName: _userName!,
           uid: _uid!,
           activeTheme: _activeTheme,
+          currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
-          onLogout: () async {
-            await FirebaseService().signOut();
-            setState(() { _userName = null; _uid = null; });
-          },
+          onLogout: _logout,
         );
     }
   }
@@ -153,34 +159,87 @@ class _LifeOSAppState extends State<LifeOSApp> {
       home: Scaffold(
         backgroundColor: Colors.transparent,
         body: _buildCurrentScreen(),
-        bottomNavigationBar: _userName != null ? Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
-            border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+        bottomNavigationBar: _userName != null ? _buildFloatingNavBar() : null,
+      ),
+    );
+  }
+
+  Widget _buildFloatingNavBar() {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A2E).withOpacity(0.85),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFBC13FE).withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 5),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavItem(Icons.dashboard_rounded, 'Home', 0),
+                _buildNavItem(Icons.auto_awesome, 'AI', 1),
+                _buildNavItem(Icons.calendar_today_rounded, 'Plan', 2),
+                _buildNavItem(Icons.track_changes_rounded, 'Habits', 3),
+                _buildNavItem(Icons.account_balance_wallet_rounded, 'Finance', 4),
+              ],
+            ),
           ),
-          child: BottomNavigationBar(
-            currentIndex: _selectedIndex > 4 ? 0 : _selectedIndex,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: const Color(0xFFBC13FE),
-            unselectedItemColor: Colors.grey[600],
-            selectedFontSize: 11,
-            unselectedFontSize: 10,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-              BottomNavigationBarItem(icon: Icon(Icons.auto_awesome), label: 'AI Agent'),
-              BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Planner'),
-              BottomNavigationBarItem(icon: Icon(Icons.track_changes_rounded), label: 'Habits'),
-              BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_rounded), label: 'Finance'),
-            ],
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-          ),
-        ) : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index || (_selectedIndex == 5 && index == 0);
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: isSelected
+            ? BoxDecoration(
+                color: const Color(0xFFBC13FE).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              )
+            : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFFBC13FE) : Colors.grey[600],
+              size: isSelected ? 26 : 22,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFFBC13FE) : Colors.grey[600],
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

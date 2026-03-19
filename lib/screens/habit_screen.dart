@@ -67,14 +67,19 @@ class _HabitScreenState extends State<HabitScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (nameController.text.trim().isNotEmpty) {
+                      final name = nameController.text.trim();
+                      final category = categoryController.text.trim().isNotEmpty ? categoryController.text.trim() : 'General';
+                      
+                      // Optimistic Pop: Close modal immediately
+                      Navigator.pop(ctx);
+
                       final updatedList = List<Map<String, dynamic>>.from(currentHabits);
                       updatedList.add({
-                        'name': nameController.text.trim(),
-                        'category': categoryController.text.trim().isNotEmpty ? categoryController.text.trim() : 'General',
+                        'name': name,
+                        'category': category,
                         'status': 'todo',
                       });
                       await _db.syncHabits(widget.uid, updatedList);
-                      if (mounted) Navigator.pop(ctx);
                     }
                   },
                   style: ElevatedButton.styleFrom(

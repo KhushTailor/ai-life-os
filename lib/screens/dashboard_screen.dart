@@ -6,6 +6,7 @@ class DashboardScreen extends StatefulWidget {
   final String userName;
   final String uid;
   final String activeTheme;
+  final String currency;
   final Function(int) onNavigate;
   final VoidCallback onLogout;
 
@@ -14,6 +15,7 @@ class DashboardScreen extends StatefulWidget {
     required this.userName,
     required this.uid,
     required this.activeTheme,
+    required this.currency,
     required this.onNavigate,
     required this.onLogout,
   });
@@ -133,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               children: [
                                 _buildGlassStatCard('Tasks Done', '$tasksDone', Icons.check_circle_rounded, Colors.greenAccent),
                                 _buildGlassStatCard('Streak', '$streak days', Icons.local_fire_department_rounded, Colors.orangeAccent),
-                                _buildGlassStatCard('Saved', '\$${saved.toStringAsFixed(0)}', Icons.account_balance_wallet_rounded, Colors.cyanAccent),
+                                _buildGlassStatCard('Saved', '${widget.currency}${saved.toStringAsFixed(0)}', Icons.account_balance_wallet_rounded, Colors.cyanAccent),
                                 _buildGlassStatCard('Focus', '0h', Icons.psychology_rounded, const Color(0xFFBC13FE)),
                               ],
                             ),

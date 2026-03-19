@@ -4,7 +4,8 @@ import '../services/firebase_service.dart';
 
 class FinanceScreen extends StatefulWidget {
   final String uid;
-  const FinanceScreen({super.key, required this.uid});
+  final String currency;
+  const FinanceScreen({super.key, required this.uid, required this.currency});
 
   @override
   State<FinanceScreen> createState() => _FinanceScreenState();
@@ -62,7 +63,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   filled: true,
                   fillColor: Colors.white.withOpacity(0.05),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  prefixText: '\$ ',
+                  prefixText: '${widget.currency} ',
                   prefixStyle: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -76,14 +77,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         onPressed: () async {
                           if (titleController.text.trim().isNotEmpty && amountController.text.trim().isNotEmpty) {
                             final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                            final title = titleController.text.trim();
+                            
+                            // Optimistic Pop: Close keyboard and modal immediately
+                            Navigator.pop(ctx);
+                            
                             final updatedList = List<Map<String, dynamic>>.from(currentTxs);
                             updatedList.add({
-                              'title': titleController.text.trim(),
+                              'title': title,
                               'amount': amount,
                               'date': 'Today',
                             });
                             await _db.syncFinance(widget.uid, updatedList);
-                            if (mounted) Navigator.pop(ctx);
                           }
                         },
                         style: OutlinedButton.styleFrom(
@@ -102,14 +107,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         onPressed: () async {
                           if (titleController.text.trim().isNotEmpty && amountController.text.trim().isNotEmpty) {
                             final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                            final title = titleController.text.trim();
+
+                            // Optimistic Pop
+                            Navigator.pop(ctx);
+
                             final updatedList = List<Map<String, dynamic>>.from(currentTxs);
                             updatedList.add({
-                              'title': titleController.text.trim(),
+                              'title': title,
                               'amount': -amount,
                               'date': 'Today',
                             });
                             await _db.syncFinance(widget.uid, updatedList);
-                            if (mounted) Navigator.pop(ctx);
                           }
                         },
                         style: ElevatedButton.styleFrom(
