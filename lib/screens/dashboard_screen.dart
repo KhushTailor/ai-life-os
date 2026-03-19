@@ -68,9 +68,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final habits = habitsSnap.data ?? [];
                     final finance = financeSnap.data ?? [];
 
-                    final tasksDone = tasks.where((t) => t['completed'] == true).length;
-                    final streak = habits.isNotEmpty ? 1 : 0; 
-                    
+                    final todayTasks = tasks.where((t) => t['completed'] != true).take(3).toList();
+                    final sortedHabits = List.from(habits)..sort((a,b) => (a['status'] == 'done' ? 1 : 0).compareTo(b['status'] == 'done' ? 1 : 0));
+                    final topHabits = sortedHabits.take(3).toList();
+
                     final totalIncome = finance.where((tx) => (tx['amount'] ?? 0) > 0).fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0));
                     final totalExpenses = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0).abs());
                     final saved = totalIncome - totalExpenses;
@@ -80,128 +81,77 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header 
+                          // Top Header
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${_getGreeting()},', style: TextStyle(fontSize: 14, color: _textTertiary)),
-                                    const SizedBox(height: 4),
-                                    Text(widget.userName, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _textPrimary)),
-                                  ],
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(_getGreeting(), style: TextStyle(fontSize: 14, color: _textTertiary)),
+                                  const SizedBox(height: 4),
+                                  Text(widget.userName, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textPrimary)),
+                                ],
                               ),
                               GestureDetector(
-                                onTap: () => widget.onNavigate(5),
+                                onTap: () => widget.onNavigate(5), // 5 is Settings
                                 child: Container(
-                                  padding: const EdgeInsets.all(10),
+                                  padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: _isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(12),
+                                    shape: BoxShape.circle,
                                     border: Border.all(color: _borderColor),
                                   ),
-                                  child: Icon(Icons.settings_rounded, color: _textSecondary, size: 22),
+                                  child: Icon(Icons.settings_rounded, color: _textSecondary, size: 24),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(_getFormattedDate(), style: TextStyle(color: _textTertiary, fontSize: 13)),
+                          const SizedBox(height: 30),
 
-                          const SizedBox(height: 28),
-
-                          // Lifecycle Report Chart
-                          Text('LIFECYCLE OVERVIEW', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                          const SizedBox(height: 16),
-                          _buildPremiumCard(
-                            child: Column(
-                              children: [
-                                SizedBox(
-                                  height: 180,
-                                  child: PieChart(
-                                    PieChartData(
-                                      sectionsSpace: 4,
-                                      centerSpaceRadius: 40,
-                                      sections: _buildChartSections(finance),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _buildLegendItem('Spending', Colors.redAccent),
-                                    const SizedBox(width: 20),
-                                    _buildLegendItem('Saving', Colors.greenAccent),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Stats Grid
-                          GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.6,
+                          // Essential Quick Actions
+                          Row(
                             children: [
-                              _buildGlassStatCard('Tasks Done', '$tasksDone', Icons.check_circle_rounded, Colors.greenAccent),
-                              _buildGlassStatCard('Streak', '$streak days', Icons.local_fire_department_rounded, Colors.orangeAccent),
-                              _buildGlassStatCard('Saved', '${widget.currency}${saved.toStringAsFixed(0)}', Icons.account_balance_wallet_rounded, Colors.cyanAccent),
-                              _buildGlassStatCard('Focus', '0h', Icons.psychology_rounded, widget.activeTheme.accentColor),
+                              Expanded(child: _buildActionButton('AI Chat', Icons.auto_awesome_rounded, widget.activeTheme.accentColor, 1)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _buildActionButton('Focus', Icons.timer_rounded, Colors.orangeAccent, 6)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _buildActionButton('Tasks', Icons.add_task_rounded, Colors.cyanAccent, 2)),
                             ],
                           ),
 
-                          const SizedBox(height: 32),
-
-                          // AI Brain Quick Input
-                          _buildPremiumCard(
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: widget.activeTheme.accentColor.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(Icons.psychology_rounded, color: widget.activeTheme.accentColor, size: 24),
+                          const SizedBox(height: 35),
+                          Text('UPCOMING AGENDA', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                          const SizedBox(height: 12),
+                          
+                          if (todayTasks.isEmpty && topHabits.isEmpty)
+                            _buildFastCard(
+                              child: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  child: Text("You're all caught up for today!", style: TextStyle(color: _textSecondary, fontStyle: FontStyle.italic)),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('AI Focus', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-                                      Text('Ready for a deep work session?', style: TextStyle(color: _textTertiary, fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () => widget.onNavigate(6),
-                                  child: Text('EXPLORE', style: TextStyle(color: widget.activeTheme.accentColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
 
-                          const SizedBox(height: 32),
+                          if (todayTasks.isNotEmpty) ...[
+                            ...todayTasks.map((t) => _buildSimpleTile(t['title'], Icons.square_outlined, Colors.cyanAccent)),
+                          ],
 
-                          // Quick Actions
+                          if (topHabits.isNotEmpty) ...[
+                            if (todayTasks.isNotEmpty) const SizedBox(height: 8),
+                            ...topHabits.map((h) => _buildSimpleTile(h['name'], h['status'] == 'done' ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, Colors.greenAccent)),
+                          ],
+
+                          const SizedBox(height: 35),
+                          Text('QUICK STATS', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                          const SizedBox(height: 12),
+                          
                           Row(
                             children: [
-                              Expanded(child: _buildQuickAction('AI Chat', Icons.auto_awesome, widget.activeTheme.accentColor, 1)),
+                              Expanded(child: _buildStatCard('Net Balance', '${widget.currency}${saved.toStringAsFixed(0)}', Icons.account_balance_wallet_rounded, Colors.greenAccent)),
                               const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Plan', Icons.calendar_today_rounded, Colors.cyanAccent, 2)),
-                              const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Habits', Icons.track_changes_rounded, Colors.greenAccent, 3)),
+                              Expanded(child: _buildStatCard('Habit Streak', '${habits.isNotEmpty ? 1 : 0} Days', Icons.local_fire_department_rounded, Colors.orangeAccent)),
                             ],
                           ),
                         ],
@@ -217,97 +167,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  List<PieChartSectionData> _buildChartSections(List<Map<String, dynamic>> finance) {
-    final expenses = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (s, t) => s + (t['amount'] ?? 0).abs());
-    final income = finance.where((tx) => (tx['amount'] ?? 0) > 0).fold(0.0, (s, t) => s + (t['amount'] ?? 0));
-    
-    if (expenses == 0 && income == 0) {
-      return [
-        PieChartSectionData(color: (_isLight ? Colors.grey[300]! : Colors.grey).withValues(alpha: 0.2), value: 1, radius: 20, title: ''),
-      ];
-    }
-
-    return [
-      PieChartSectionData(
-        color: Colors.redAccent.withValues(alpha: 0.6),
-        value: expenses,
-        radius: 25,
-        title: '',
-        badgeWidget: Icon(Icons.trending_down, color: _textPrimary, size: 14),
-        badgePositionPercentageOffset: 1.3,
+  Widget _buildSimpleTile(String title, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _isLight ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
       ),
-      PieChartSectionData(
-        color: Colors.greenAccent.withValues(alpha: 0.6),
-        value: income,
-        radius: 25,
-        title: '',
-        badgeWidget: Icon(Icons.trending_up, color: _textPrimary, size: 14),
-        badgePositionPercentageOffset: 1.3,
-      ),
-    ];
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: _textTertiary, fontSize: 12)),
-      ],
-    );
-  }
-
-  Widget _buildPremiumCard({required Widget child}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: widget.activeTheme.blur, sigmaY: widget.activeTheme.blur),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: widget.activeTheme.cardGradient,
-            ),
-            borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
-            border: Border.all(color: _borderColor),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlassStatCard(String label, String value, IconData icon, Color color) {
-    return _buildPremiumCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, color: color, size: 22),
-              Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          Text(label, style: TextStyle(color: _textTertiary, fontSize: 12)),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(title, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildQuickAction(String label, IconData icon, Color color, int navIndex) {
+  Widget _buildActionButton(String label, IconData icon, Color color, int navIndex) {
     return GestureDetector(
       onTap: () => widget.onNavigate(navIndex),
-      child: _buildPremiumCard(
+      child: _buildFastCard(
+        padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: _textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(color: _textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return _buildFastCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(color: _textTertiary, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFastCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    // Highly optimized card without BackdropFilter for massive speed improvements
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Reduced blur for speed, but kept for aesthetics
+        child: Container(
+          padding: padding ?? const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _isLight ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.2),
+            border: Border.all(color: _borderColor),
+          ),
+          child: child,
         ),
       ),
     );

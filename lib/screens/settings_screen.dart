@@ -257,37 +257,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildActionTile(IconData icon, String title, String subtitle, {required VoidCallback onTap, required Color color}) {
-    return GestureDetector(
+    return ListTile(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: _isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _borderColor),
+          color: color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: TextStyle(color: _textTertiary, fontSize: 12)),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios_rounded, color: _textTertiary, size: 14),
-          ],
-        ),
+        child: Icon(icon, color: color, size: 22),
       ),
+      title: Text(title, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
+      subtitle: Text(subtitle, style: TextStyle(color: _textTertiary, fontSize: 12)),
+      trailing: Icon(Icons.arrow_forward_ios_rounded, color: _textTertiary, size: 14),
     );
   }
 }

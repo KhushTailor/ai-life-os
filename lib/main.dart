@@ -13,6 +13,7 @@ import 'screens/finance_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/focus_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 void main() async {
@@ -61,6 +62,17 @@ class _LifeOSAppState extends State<LifeOSApp> {
   void initState() {
     super.initState();
     _checkAuth();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _activeThemeKey = prefs.getString('theme') ?? 'nebula_deep';
+        _currency = prefs.getString('currency') ?? '\$';
+      });
+    }
   }
 
   void _checkAuth() {
@@ -75,16 +87,20 @@ class _LifeOSAppState extends State<LifeOSApp> {
     }
   }
 
-  void _onThemeChanged(String themeKey) {
+  void _onThemeChanged(String themeKey) async {
     setState(() {
       _activeThemeKey = themeKey;
     });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme', themeKey);
   }
 
-  void _onCurrencyChanged(String symbol) {
+  void _onCurrencyChanged(String symbol) async {
     setState(() {
       _currency = symbol;
     });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('currency', symbol);
   }
 
   Future<void> _logout() async {
@@ -121,11 +137,11 @@ class _LifeOSAppState extends State<LifeOSApp> {
       case 1:
         return ChatScreen(userName: _userName!, activeTheme: theme);
       case 2:
-        return PlannerScreen(uid: _uid!, activeTheme: theme);
+        return PlannerScreen(uid: _uid!, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
       case 3:
-        return HabitScreen(uid: _uid!, activeTheme: theme);
+        return HabitScreen(uid: _uid!, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
       case 4:
-        return FinanceScreen(uid: _uid!, currency: _currency, activeTheme: theme);
+        return FinanceScreen(uid: _uid!, currency: _currency, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
       case 5:
         return SettingsScreen(
           activeTheme: _activeThemeKey,
@@ -221,7 +237,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
               children: [
                 _buildNavItem(Icons.dashboard_rounded, 'Home', 0, theme),
                 _buildNavItem(Icons.auto_awesome, 'AI', 1, theme),
-                _buildNavItem(Icons.calendar_today_rounded, 'Plan', 2, theme),
+                _buildNavItem(Icons.check_circle_outline_rounded, 'Tasks', 2, theme),
                 _buildNavItem(Icons.track_changes_rounded, 'Habits', 3, theme),
                 _buildNavItem(Icons.account_balance_wallet_rounded, 'Finance', 4, theme),
               ],
