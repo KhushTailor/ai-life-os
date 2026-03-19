@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
 import 'services/firebase_service.dart';
+import 'theme/glass_theme.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/chat_screen.dart';
@@ -48,7 +49,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
   String? _userName;
   String? _uid;
   int _selectedIndex = 0;
-  String _activeTheme = 'neon_dark';
+  String _activeThemeKey = 'nebula_deep';
   String _currency = '\$';
 
   @override
@@ -71,7 +72,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
 
   void _onThemeChanged(String themeKey) {
     setState(() {
-      _activeTheme = themeKey;
+      _activeThemeKey = themeKey;
     });
   }
 
@@ -86,7 +87,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
     setState(() { _userName = null; _uid = null; });
   }
 
-  Widget _buildCurrentScreen() {
+  Widget _buildCurrentScreen(GlassTheme theme) {
     if (_userName == null || _uid == null) {
       return AuthScreen(
         onLogin: (name) {
@@ -107,7 +108,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
         return DashboardScreen(
           userName: _userName!,
           uid: _uid!,
-          activeTheme: _activeTheme,
+          activeTheme: theme,
           currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
           onLogout: _logout,
@@ -115,14 +116,14 @@ class _LifeOSAppState extends State<LifeOSApp> {
       case 1:
         return ChatScreen(userName: _userName!);
       case 2:
-        return PlannerScreen(uid: _uid!);
+        return PlannerScreen(uid: _uid!, activeTheme: theme);
       case 3:
-        return HabitScreen(uid: _uid!);
+        return HabitScreen(uid: _uid!, activeTheme: theme);
       case 4:
-        return FinanceScreen(uid: _uid!, currency: _currency);
+        return FinanceScreen(uid: _uid!, currency: _currency, activeTheme: theme);
       case 5:
         return SettingsScreen(
-          activeTheme: _activeTheme,
+          activeTheme: _activeThemeKey,
           onThemeChanged: _onThemeChanged,
           userName: _userName!,
           currency: _currency,
@@ -133,7 +134,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
         return DashboardScreen(
           userName: _userName!,
           uid: _uid!,
-          activeTheme: _activeTheme,
+          activeTheme: theme,
           currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
           onLogout: _logout,
@@ -143,61 +144,75 @@ class _LifeOSAppState extends State<LifeOSApp> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = GlassTheme.themes[_activeThemeKey] ?? GlassTheme.themes['nebula_deep']!;
+
     return MaterialApp(
       title: 'Life OS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0C29),
+        brightness: theme.brightness,
+        scaffoldBackgroundColor: Colors.transparent,
         cardColor: Colors.black,
-        dividerColor: const Color(0xFF262626),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFF5F5F5)),
-          bodyMedium: TextStyle(color: Color(0xFFA8A8A8)),
-        ),
+        dividerColor: Colors.white.withOpacity(0.1),
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: _buildCurrentScreen(),
-        bottomNavigationBar: _userName != null ? _buildFloatingNavBar() : null,
+        // extendBody: true allows content to scroll BEHIND the floating bottom bar
+        extendBody: true,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: theme.backgroundGradient,
+            ),
+          ),
+          child: Stack(
+            children: [
+              _buildCurrentScreen(theme),
+              if (_userName != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildFloatingNavBar(theme),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildFloatingNavBar() {
+  Widget _buildFloatingNavBar(GlassTheme theme) {
     return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
             height: 70,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E).withOpacity(0.85),
+              color: (theme.brightness == Brightness.dark ? Colors.black : Colors.white).withOpacity(0.7),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(color: Colors.white.withOpacity(0.12)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFBC13FE).withOpacity(0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 5),
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: theme.accentColor.withOpacity(0.1),
                   blurRadius: 15,
-                  offset: const Offset(0, 8),
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildNavItem(Icons.dashboard_rounded, 'Home', 0),
-                _buildNavItem(Icons.auto_awesome, 'AI', 1),
-                _buildNavItem(Icons.calendar_today_rounded, 'Plan', 2),
-                _buildNavItem(Icons.track_changes_rounded, 'Habits', 3),
-                _buildNavItem(Icons.account_balance_wallet_rounded, 'Finance', 4),
+                _buildNavItem(Icons.dashboard_rounded, 'Home', 0, theme),
+                _buildNavItem(Icons.auto_awesome, 'AI', 1, theme),
+                _buildNavItem(Icons.calendar_today_rounded, 'Plan', 2, theme),
+                _buildNavItem(Icons.track_changes_rounded, 'Habits', 3, theme),
+                _buildNavItem(Icons.account_balance_wallet_rounded, 'Finance', 4, theme),
               ],
             ),
           ),
@@ -206,7 +221,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, String label, int index, GlassTheme theme) {
     final isSelected = _selectedIndex == index || (_selectedIndex == 5 && index == 0);
 
     return GestureDetector(
@@ -217,7 +232,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: isSelected
             ? BoxDecoration(
-                color: const Color(0xFFBC13FE).withOpacity(0.2),
+                color: theme.accentColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               )
             : null,
@@ -226,14 +241,14 @@ class _LifeOSAppState extends State<LifeOSApp> {
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFFBC13FE) : Colors.grey[600],
+              color: isSelected ? theme.accentColor : (theme.brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[700]),
               size: isSelected ? 26 : 22,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFFBC13FE) : Colors.grey[600],
+                color: isSelected ? theme.accentColor : (theme.brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[700]),
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),

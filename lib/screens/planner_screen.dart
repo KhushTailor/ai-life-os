@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import '../services/firebase_service.dart';
+import '../theme/glass_theme.dart';
 
 class PlannerScreen extends StatefulWidget {
   final String uid;
-  const PlannerScreen({super.key, required this.uid});
+  final GlassTheme activeTheme;
+  const PlannerScreen({super.key, required this.uid, required this.activeTheme});
 
   @override
   State<PlannerScreen> createState() => _PlannerScreenState();
@@ -26,7 +28,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
+            color: (widget.activeTheme.brightness == Brightness.dark ? const Color(0xFF1A1A2E) : Colors.white),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
@@ -35,42 +37,42 @@ class _PlannerScreenState extends State<PlannerScreen> {
             children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
-              const Text('New Task', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('New Plan', style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               TextField(
                 controller: titleController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
-                  hintText: 'Task title',
+                  hintText: 'What needs to be done?',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: Colors.grey.withOpacity(0.1),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: timeController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
                   hintText: 'Time (e.g. 9:00 AM)',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: Colors.grey.withOpacity(0.1),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  prefixIcon: Icon(Icons.access_time_rounded, color: widget.activeTheme.accentColor),
                 ),
               ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: () async {
                     if (titleController.text.trim().isNotEmpty) {
                       final title = titleController.text.trim();
                       final time = timeController.text.trim().isNotEmpty ? timeController.text.trim() : 'Anytime';
                       
-                      // Optimistic Pop: Close modal immediately
                       Navigator.pop(ctx);
 
                       final updatedList = List<Map<String, dynamic>>.from(currentTasks);
@@ -83,10 +85,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFBC13FE),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: widget.activeTheme.accentColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  child: const Text('Add Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text('Schedule', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -98,154 +100,75 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _db.streamTasks(widget.uid),
-      builder: (context, snapshot) {
-        final tasks = snapshot.data ?? [];
-
-        return Scaffold(
-          backgroundColor: const Color(0xFF0F0C29),
-          appBar: AppBar(
-            title: const Text('Smart Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-          ),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCalendarStrip(),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Today's Schedule", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                      Icon(Icons.tune, size: 20, color: Colors.white.withOpacity(0.4)),
-                    ],
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _db.streamTasks(widget.uid),
+        builder: (context, snapshot) {
+          final tasks = snapshot.data ?? [];
+          return ListView.builder(
+            padding: const EdgeInsets.all(20).copyWith(bottom: 120),
+            itemCount: tasks.length + 1,
+            itemBuilder: (ctx, i) {
+              if (i == tasks.length) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: FloatingActionButton.extended(
+                      onPressed: () => _addTask(tasks),
+                      backgroundColor: widget.activeTheme.accentColor,
+                      label: const Text('Add Plan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: tasks.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.event_note, size: 60, color: Colors.white.withOpacity(0.2)),
-                                const SizedBox(height: 16),
-                                Text("No plans scheduled", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
-                                const SizedBox(height: 8),
-                                Text("Tap + to plan your day", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: tasks.length,
-                            itemBuilder: (context, index) {
-                              final task = tasks[index];
-                              return _buildTaskCard(task, index, tasks);
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _addTask(tasks),
-            backgroundColor: const Color(0xFFBC13FE),
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        );
-      }
-    );
-  }
-
-  Widget _buildCalendarStrip() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(7, (index) {
-          final date = DateTime.now().add(Duration(days: index - 3));
-          final isToday = index == 3;
-
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isToday ? const Color(0xFFBC13FE) : Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: isToday ? const Color(0xFFBC13FE) : Colors.white.withOpacity(0.08)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1],
-                  style: TextStyle(color: isToday ? Colors.white70 : Colors.white.withOpacity(0.4), fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  date.day.toString(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ],
-            ),
+                );
+              }
+              final task = tasks[i];
+              return _buildGlassTaskTile(task, i, tasks);
+            },
           );
-        }),
+        },
       ),
     );
   }
 
-  Widget _buildTaskCard(Map<String, dynamic> task, int index, List<Map<String, dynamic>> currentTasks) {
-    return GestureDetector(
-      onTap: () async {
-        final updatedList = List<Map<String, dynamic>>.from(currentTasks);
-        updatedList[index]['completed'] = !updatedList[index]['completed'];
-        await _db.syncTasks(widget.uid, updatedList);
-      },
-      onLongPress: () async {
-        final updatedList = List<Map<String, dynamic>>.from(currentTasks);
-        updatedList.removeAt(index);
-        await _db.syncTasks(widget.uid, updatedList);
-      },
+  Widget _buildGlassTaskTile(Map<String, dynamic> task, int index, List<Map<String, dynamic>> allTasks) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: widget.activeTheme.blur, sigmaY: widget.activeTheme.blur),
           child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(18),
+              gradient: LinearGradient(colors: widget.activeTheme.cardGradient),
+              borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Row(
               children: [
-                Container(
-                  width: 50,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: task['completed']
-                        ? Colors.greenAccent.withOpacity(0.15)
-                        : const Color(0xFFBC13FE).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    task['time'].toString().split(' ')[0],
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: task['completed'] ? Colors.greenAccent : const Color(0xFFBC13FE),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                GestureDetector(
+                  onTap: () {
+                    final updated = List<Map<String, dynamic>>.from(allTasks);
+                    updated[index]['completed'] = !updated[index]['completed'];
+                    _db.syncTasks(widget.uid, updated);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: task['completed'] ? Colors.greenAccent : widget.activeTheme.accentColor),
+                    ),
+                    child: Icon(
+                      task['completed'] ? Icons.check_circle : Icons.radio_button_off,
+                      size: 20,
+                      color: task['completed'] ? Colors.greenAccent : widget.activeTheme.accentColor,
                     ),
                   ),
                 ),
@@ -255,32 +178,26 @@ class _PlannerScreenState extends State<PlannerScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        task['title'],
+                        task['title'], 
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
                           color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                           decoration: task['completed'] ? TextDecoration.lineThrough : null,
-                        ),
+                          decorationColor: Colors.white54,
+                        )
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        task['completed'] ? 'Completed' : 'Upcoming',
-                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
-                      ),
+                      Text(task['time'], style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
                     ],
                   ),
                 ),
-                Checkbox(
-                  value: task['completed'],
-                  onChanged: (val) async {
-                    final updatedList = List<Map<String, dynamic>>.from(currentTasks);
-                    updatedList[index]['completed'] = val ?? false;
-                    await _db.syncTasks(widget.uid, updatedList);
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: Colors.white.withOpacity(0.3), size: 20),
+                  onPressed: () {
+                    final updated = List<Map<String, dynamic>>.from(allTasks);
+                    updated.removeAt(index);
+                    _db.syncTasks(widget.uid, updated);
                   },
-                  activeColor: const Color(0xFFBC13FE),
-                  checkColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                  side: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
               ],
             ),

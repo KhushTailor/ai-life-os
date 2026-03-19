@@ -4,87 +4,80 @@ class GlassTheme {
   final String key;
   final String name;
   final String description;
-  final List<Color> backgroundGradient;
+  final List<Color> backgroundGradient; // Scaffold background
+  final List<Color> cardGradient;       // Card background
   final Color accentColor;
   final double blur;
-  final Color cardColor;
+  final double opacity;
   final double cardBorderRadius;
-  final Color textColor;
-  final Color subtextColor;
+  final Brightness brightness;
 
   GlassTheme({
     required this.key,
     required this.name,
     required this.description,
     required this.backgroundGradient,
+    required this.cardGradient,
     required this.accentColor,
     this.blur = 20.0,
-    required this.cardColor,
-    this.cardBorderRadius = 20.0,
-    this.textColor = Colors.white,
-    this.subtextColor = const Color(0xAAFFFFFF),
+    this.opacity = 0.1,
+    this.cardBorderRadius = 24.0,
+    this.brightness = Brightness.dark,
   });
 
   static Map<String, GlassTheme> themes = {
-    'neon_dark': GlassTheme(
-      key: 'neon_dark',
-      name: 'Neon Dark',
-      description: 'Deep purple glassmorphism with neon accents',
+    'nebula_deep': GlassTheme(
+      key: 'nebula_deep',
+      name: 'Nebula Deep',
+      description: 'Cosmic purples with frosted high-blur glass',
       backgroundGradient: [const Color(0xFF0F0C29), const Color(0xFF302B63), const Color(0xFF24243E)],
+      cardGradient: [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)],
       accentColor: const Color(0xFFBC13FE),
-      cardColor: Colors.white.withOpacity(0.08),
-      blur: 20.0,
-      cardBorderRadius: 20.0,
-    ),
-    'midnight_ocean': GlassTheme(
-      key: 'midnight_ocean',
-      name: 'Midnight Ocean',
-      description: 'Deep navy with cyan glow & aquatic feel',
-      backgroundGradient: [const Color(0xFF0D1B2A), const Color(0xFF1B2838), const Color(0xFF0A192F)],
-      accentColor: const Color(0xFF00D4FF),
-      cardColor: const Color(0xFF00D4FF).withOpacity(0.08),
-      blur: 25.0,
-      cardBorderRadius: 16.0,
-    ),
-    'cyber_punk': GlassTheme(
-      key: 'cyber_punk',
-      name: 'Cyber Punk',
-      description: 'High contrast black & neon red/yellow grid',
-      backgroundGradient: [const Color(0xFF0A0A0A), const Color(0xFF1A0A0A), const Color(0xFF0A0505)],
-      accentColor: const Color(0xFFFF003C),
-      cardColor: const Color(0xFFFF003C).withOpacity(0.06),
-      blur: 12.0,
-      cardBorderRadius: 8.0,
-    ),
-    'aurora_frost': GlassTheme(
-      key: 'aurora_frost',
-      name: 'Aurora Frost',
-      description: 'Icy arctic greens with frosted glass panels',
-      backgroundGradient: [const Color(0xFF0B1D26), const Color(0xFF122D3E), const Color(0xFF1A3A4A)],
-      accentColor: const Color(0xFF00FFA3),
-      cardColor: Colors.white.withOpacity(0.12),
       blur: 30.0,
-      cardBorderRadius: 24.0,
+      opacity: 0.15,
     ),
-    'sunset_blaze': GlassTheme(
-      key: 'sunset_blaze',
-      name: 'Sunset Blaze',
-      description: 'Warm oranges & reds with soft golden glow',
-      backgroundGradient: [const Color(0xFF1A0A00), const Color(0xFF2D1810), const Color(0xFF3D1F15)],
-      accentColor: const Color(0xFFFF6B35),
-      cardColor: const Color(0xFFFF6B35).withOpacity(0.08),
-      blur: 18.0,
-      cardBorderRadius: 22.0,
+    'emerald_frost': GlassTheme(
+      key: 'emerald_frost',
+      name: 'Emerald Frost',
+      description: 'Crisp arctic greens with subtle crystal edges',
+      backgroundGradient: [const Color(0xFF0D1F1F), const Color(0xFF1A3A3A), const Color(0xFF0B1A1A)],
+      cardGradient: [const Color(0xFF00FFA3).withOpacity(0.1), const Color(0xFF00FFA3).withOpacity(0.02)],
+      accentColor: const Color(0xFF00FFA3),
+      blur: 20.0,
+      opacity: 0.08,
     ),
-    'minimal_steel': GlassTheme(
-      key: 'minimal_steel',
-      name: 'Minimal Steel',
-      description: 'Clean monochrome with sharp metallic edges',
-      backgroundGradient: [const Color(0xFF1A1A2E), const Color(0xFF16213E), const Color(0xFF0F3460)],
-      accentColor: const Color(0xFFE0E0E0),
-      cardColor: Colors.white.withOpacity(0.06),
+    'ruby_neon': GlassTheme(
+      key: 'ruby_neon',
+      name: 'Ruby Neon',
+      description: 'High-energy red pulse with sleek dark glass',
+      backgroundGradient: [const Color(0xFF1A0505), const Color(0xFF2D0A0A), const Color(0xFF0F0505)],
+      cardGradient: [const Color(0xFFFF003C).withOpacity(0.08), const Color(0xFFFF003C).withOpacity(0.01)],
+      accentColor: const Color(0xFFFF003C),
       blur: 15.0,
+      opacity: 0.06,
       cardBorderRadius: 12.0,
+    ),
+    'crystal_light': GlassTheme(
+      key: 'crystal_light',
+      name: 'Crystal Light',
+      description: 'Clean, airy glass on a soft morning sky',
+      backgroundGradient: [const Color(0xFFE0EAFC), const Color(0xFFCFDEF3)],
+      cardGradient: [Colors.white.withOpacity(0.6), Colors.white.withOpacity(0.3)],
+      accentColor: const Color(0xFF4A90E2),
+      blur: 25.0,
+      opacity: 0.4,
+      brightness: Brightness.light,
+    ),
+    'onyx_stealth': GlassTheme(
+      key: 'onyx_stealth',
+      name: 'Onyx Stealth',
+      description: 'Pure black depths with vibrant neon borders',
+      backgroundGradient: [Colors.black, const Color(0xFF0A0A0A)],
+      cardGradient: [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.02)],
+      accentColor: const Color(0xFF00D4FF),
+      blur: 10.0,
+      opacity: 0.04,
+      cardBorderRadius: 16.0,
     ),
   };
 }
