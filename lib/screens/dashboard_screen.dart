@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
-import '../widgets/stat_card.dart';
-import '../widgets/life_os_card.dart';
-import '../widgets/ai_insight_card.dart';
+import 'dart:ui';
+import '../widgets/glass_container.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
-  final bool isDarkMode;
-  final VoidCallback onToggleTheme;
-  final VoidCallback onLogout;
+  final String activeTheme;
   final Function(int) onNavigate;
+  final VoidCallback onLogout;
 
   const DashboardScreen({
-    super.key, 
-    required this.userName, 
-    required this.isDarkMode, 
-    required this.onToggleTheme,
-    required this.onLogout,
+    super.key,
+    required this.userName,
+    required this.activeTheme,
     required this.onNavigate,
+    required this.onLogout,
   });
 
   @override
@@ -24,193 +21,261 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _getFormattedDate() {
+    final now = DateTime.now();
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}, ${now.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Command Center', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        elevation: 0,
-        backgroundColor: theme.scaffoldBackgroundColor,
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.sync, size: 20, color: Colors.blue),
-            tooltip: 'Cloud Synced',
+      backgroundColor: const Color(0xFF0F0C29),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
           ),
-          IconButton(
-            onPressed: widget.onToggleTheme, 
-            icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: theme.scaffoldBackgroundColor),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: const Color(0xFF0095F6),
-                child: Text(widget.userName[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-              accountName: Text(widget.userName, style: TextStyle(color: theme.textTheme.bodyLarge?.color, fontWeight: FontWeight.bold)),
-              accountEmail: Text('🔥 7 day streak', style: TextStyle(color: theme.textTheme.bodyMedium?.color, fontSize: 12)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Dashboard'),
-              onTap: () => Navigator.pop(context),
-            ),
-            _buildModuleTile(
-              context,
-              title: 'Smart Planner',
-              subtitle: 'Next: Meeting at 11:00 AM',
-              icon: Icons.calendar_today_outlined,
-              color: Colors.blue,
-              onTap: () => widget.onNavigate(5),
-            ),
-            _buildModuleTile(
-              context,
-              title: 'Habit Tracker',
-              subtitle: '4 habits pending for today',
-              icon: Icons.check_circle_outline,
-              color: Colors.green,
-              onTap: () => widget.onNavigate(3),
-            ),
-            _buildModuleTile(
-              context,
-              title: 'Finance Hub',
-              subtitle: 'Weekly spend: \$420.00',
-              icon: Icons.account_balance_wallet_outlined,
-              color: Colors.orange,
-              onTap: () => widget.onNavigate(4),
-            ),
-            _buildModuleTile(
-              context,
-              title: 'AI Agent',
-              subtitle: 'Ask anything about your life',
-              icon: Icons.auto_awesome,
-              color: Colors.purple,
-              onTap: () => widget.onNavigate(2),
-            ),
-            const Spacer(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: widget.onLogout,
-            ),
-            const SizedBox(height: 20),
-          ],
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Good evening, ${widget.userName}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('Wednesday, March 18, 2026', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
-            const SizedBox(height: 24),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
-              children: const [
-                StatCard(label: 'Tasks Done', value: '4/7', color: Colors.green, icon: Icons.check_circle),
-                StatCard(label: 'Streak', value: '7 days', color: Colors.orange, icon: Icons.local_fire_department),
-                StatCard(label: 'Saved', value: '₹4,200', color: Colors.blue, icon: Icons.account_balance_wallet),
-                StatCard(label: 'Focus', value: '2.5h', color: Colors.purple, icon: Icons.psychology),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const AIInsightCard(
-              content: 'Your system metrics are stable. You have a 120min focus session planned for tonight.',
-            ),
-            const SizedBox(height: 16),
-            const LifeOSCard(
-              title: 'Daily Objectives',
-              child: Column(
-                children: [
-                  _TaskItem(title: 'Study Physics Ch.12', time: '09:00', isDone: true),
-                  _TaskItem(title: 'App Store Submission', time: '14:00', isDone: false),
-                  _TaskItem(title: 'Workout session', time: '18:00', isDone: false),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModuleTile(BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-      onTap: onTap,
-    );
-  }
-}
-
-class _TaskItem extends StatelessWidget {
-  final String title;
-  final String time;
-  final bool isDone;
-
-  const _TaskItem({required this.title, required this.time, required this.isDone});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(
-            isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: isDone ? Colors.green : theme.textTheme.bodyMedium?.color,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    decoration: isDone ? TextDecoration.lineThrough : null,
-                    color: isDone ? theme.textTheme.bodyMedium?.color : theme.textTheme.bodyLarge?.color,
+                // Header Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_getGreeting()},',
+                            style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.userName,
+                            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => widget.onNavigate(5), // Settings
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: Icon(Icons.settings_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(_getFormattedDate(), style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+
+                const SizedBox(height: 28),
+
+                // Stats Grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.6,
+                  children: [
+                    _buildGlassStatCard('Tasks Done', '0', Icons.check_circle_rounded, Colors.greenAccent),
+                    _buildGlassStatCard('Streak', '0 days', Icons.local_fire_department_rounded, Colors.orangeAccent),
+                    _buildGlassStatCard('Saved', '₹0', Icons.account_balance_wallet_rounded, Colors.cyanAccent),
+                    _buildGlassStatCard('Focus', '0h', Icons.psychology_rounded, const Color(0xFFBC13FE)),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // AI Insight Card
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFBC13FE).withOpacity(0.15),
+                            const Color(0xFF4A00E0).withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFBC13FE).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFBC13FE).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.auto_awesome, color: Color(0xFFBC13FE), size: 24),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('AI Insight', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Welcome! Add tasks and habits to get personalized AI insights.',
+                                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                Text(time, style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color)),
+
+                const SizedBox(height: 24),
+
+                // Quick Actions
+                Text('Quick Actions', style: TextStyle(color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _buildQuickAction('AI Chat', Icons.auto_awesome, const Color(0xFFBC13FE), 1)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildQuickAction('Planner', Icons.calendar_today_rounded, Colors.cyanAccent, 2)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildQuickAction('Habits', Icons.track_changes_rounded, Colors.greenAccent, 3)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildQuickAction('Finance', Icons.account_balance_wallet_rounded, Colors.orangeAccent, 4)),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Daily Objectives (empty state)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Daily Objectives', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.inbox_rounded, size: 40, color: Colors.white.withOpacity(0.15)),
+                                const SizedBox(height: 10),
+                                Text('No objectives for today', style: TextStyle(color: Colors.white.withOpacity(0.3))),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassStatCard(String label, String value, IconData icon, Color color) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.12)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(icon, color: color, size: 22),
+                  Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
+              Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(String label, IconData icon, Color color, int navIndex) {
+    return GestureDetector(
+      onTap: () => widget.onNavigate(navIndex),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Column(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(height: 6),
+                Text(label, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
