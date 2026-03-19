@@ -13,7 +13,23 @@ import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  
+  // Using explicit options to bypass any potential Gradle initialization issues
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyDBqWBgvKyyGoZxkrdJUJ2CLSH6UyUrZxk',
+        appId: '1:165104335983:android:c6ed235c3eb903890e219a',
+        messagingSenderId: '165104335983',
+        projectId: 'life-os-29eb0',
+        storageBucket: 'life-os-29eb0.firebasestorage.app',
+      ),
+    );
+  } catch (e) {
+    // If explicit options fail or conflict, fallback to default
+    await Firebase.initializeApp();
+  }
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
