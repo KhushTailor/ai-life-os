@@ -31,6 +31,7 @@ class LifeOSApp extends StatefulWidget {
 
 class _LifeOSAppState extends State<LifeOSApp> {
   String? _userName;
+  String? _uid;
   int _selectedIndex = 0;
   String _activeTheme = 'neon_dark';
 
@@ -43,9 +44,12 @@ class _LifeOSAppState extends State<LifeOSApp> {
   void _checkAuth() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      setState(() {
-        _userName = user.displayName ?? "User";
-      });
+      if (mounted) {
+        setState(() {
+          _userName = user.displayName ?? "User";
+          _uid = user.uid;
+        });
+      }
     }
   }
 
@@ -56,32 +60,41 @@ class _LifeOSAppState extends State<LifeOSApp> {
   }
 
   Widget _buildCurrentScreen() {
-    if (_userName == null) {
-      return AuthScreen(onLogin: (name) => setState(() {
-        _userName = name;
-        _selectedIndex = 0;
-      }));
+    if (_userName == null || _uid == null) {
+      return AuthScreen(
+        onLogin: (name) {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            setState(() {
+              _userName = name;
+              _uid = user.uid;
+              _selectedIndex = 0;
+            });
+          }
+        },
+      );
     }
 
     switch (_selectedIndex) {
       case 0:
         return DashboardScreen(
           userName: _userName!,
+          uid: _uid!,
           activeTheme: _activeTheme,
           onNavigate: (index) => setState(() => _selectedIndex = index),
           onLogout: () async {
             await FirebaseService().signOut();
-            setState(() => _userName = null);
+            setState(() { _userName = null; _uid = null; });
           },
         );
       case 1:
         return ChatScreen(userName: _userName!);
       case 2:
-        return const PlannerScreen();
+        return PlannerScreen(uid: _uid!);
       case 3:
-        return const HabitScreen();
+        return HabitScreen(uid: _uid!);
       case 4:
-        return const FinanceScreen();
+        return FinanceScreen(uid: _uid!);
       case 5:
         return SettingsScreen(
           activeTheme: _activeTheme,
@@ -89,17 +102,18 @@ class _LifeOSAppState extends State<LifeOSApp> {
           userName: _userName!,
           onLogout: () async {
             await FirebaseService().signOut();
-            setState(() => _userName = null);
+            setState(() { _userName = null; _uid = null; });
           },
         );
       default:
         return DashboardScreen(
           userName: _userName!,
+          uid: _uid!,
           activeTheme: _activeTheme,
           onNavigate: (index) => setState(() => _selectedIndex = index),
           onLogout: () async {
             await FirebaseService().signOut();
-            setState(() => _userName = null);
+            setState(() { _userName = null; _uid = null; });
           },
         );
     }

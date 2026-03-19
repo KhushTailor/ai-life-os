@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../services/firebase_service.dart';
 
 class HabitScreen extends StatefulWidget {
-  const HabitScreen({super.key});
+  final String uid;
+  const HabitScreen({super.key, required this.uid});
 
   @override
   State<HabitScreen> createState() => _HabitScreenState();
 }
 
 class _HabitScreenState extends State<HabitScreen> {
-  final List<Map<String, dynamic>> _habits = [];
+  final FirebaseService _db = FirebaseService();
 
-  void _addHabit() {
+  void _addHabit(List<Map<String, dynamic>> currentHabits) {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
 
@@ -63,16 +65,16 @@ class _HabitScreenState extends State<HabitScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (nameController.text.trim().isNotEmpty) {
-                      setState(() {
-                        _habits.add({
-                          'name': nameController.text.trim(),
-                          'category': categoryController.text.trim().isNotEmpty ? categoryController.text.trim() : 'General',
-                          'status': 'todo',
-                        });
+                      final updatedList = List<Map<String, dynamic>>.from(currentHabits);
+                      updatedList.add({
+                        'name': nameController.text.trim(),
+                        'category': categoryController.text.trim().isNotEmpty ? categoryController.text.trim() : 'General',
+                        'status': 'todo',
                       });
-                      Navigator.pop(ctx);
+                      await _db.syncHabits(widget.uid, updatedList);
+                      if (mounted) Navigator.pop(ctx);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -91,61 +93,68 @@ class _HabitScreenState extends State<HabitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0C29),
-      appBar: AppBar(
-        title: const Text('Habit Tracker', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamHabits(widget.uid),
+      builder: (context, snapshot) {
+        final habits = snapshot.data ?? [];
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F0C29),
+          appBar: AppBar(
+            title: const Text('Habit Tracker', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWeeklyStats(),
-              const SizedBox(height: 24),
-              const Text("Today's Progress", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _habits.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.track_changes, size: 60, color: Colors.white.withOpacity(0.2)),
-                            const SizedBox(height: 16),
-                            Text("No habits tracked yet", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
-                            const SizedBox(height: 8),
-                            Text("Tap + to add your first habit", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _habits.length,
-                        itemBuilder: (context, index) {
-                          final habit = _habits[index];
-                          return _buildHabitItem(habit, index);
-                        },
-                      ),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
               ),
-            ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWeeklyStats(),
+                  const SizedBox(height: 24),
+                  const Text("Today's Progress", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: habits.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.track_changes, size: 60, color: Colors.white.withOpacity(0.2)),
+                                const SizedBox(height: 16),
+                                Text("No habits tracked yet", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                                const SizedBox(height: 8),
+                                Text("Tap + to add your first habit", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: habits.length,
+                            itemBuilder: (context, index) {
+                              final habit = habits[index];
+                              return _buildHabitItem(habit, index, habits);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addHabit,
-        backgroundColor: const Color(0xFFBC13FE),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _addHabit(habits),
+            backgroundColor: const Color(0xFFBC13FE),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      }
     );
   }
 
@@ -197,7 +206,7 @@ class _HabitScreenState extends State<HabitScreen> {
     );
   }
 
-  Widget _buildHabitItem(Map<String, dynamic> habit, int index) {
+  Widget _buildHabitItem(Map<String, dynamic> habit, int index, List<Map<String, dynamic>> currentHabits) {
     Color statusColor;
     IconData statusIcon;
 
@@ -216,21 +225,21 @@ class _HabitScreenState extends State<HabitScreen> {
     }
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (habit['status'] == 'todo') {
-            _habits[index]['status'] = 'completed';
-          } else if (habit['status'] == 'completed') {
-            _habits[index]['status'] = 'missed';
-          } else {
-            _habits[index]['status'] = 'todo';
-          }
-        });
+      onTap: () async {
+        final updatedList = List<Map<String, dynamic>>.from(currentHabits);
+        if (habit['status'] == 'todo') {
+          updatedList[index]['status'] = 'completed';
+        } else if (habit['status'] == 'completed') {
+          updatedList[index]['status'] = 'missed';
+        } else {
+          updatedList[index]['status'] = 'todo';
+        }
+        await _db.syncHabits(widget.uid, updatedList);
       },
-      onLongPress: () {
-        setState(() {
-          _habits.removeAt(index);
-        });
+      onLongPress: () async {
+        final updatedList = List<Map<String, dynamic>>.from(currentHabits);
+        updatedList.removeAt(index);
+        await _db.syncHabits(widget.uid, updatedList);
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),

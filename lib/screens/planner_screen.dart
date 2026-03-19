@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../services/firebase_service.dart';
 
 class PlannerScreen extends StatefulWidget {
-  const PlannerScreen({super.key});
+  final String uid;
+  const PlannerScreen({super.key, required this.uid});
 
   @override
   State<PlannerScreen> createState() => _PlannerScreenState();
 }
 
 class _PlannerScreenState extends State<PlannerScreen> {
-  final List<Map<String, dynamic>> _tasks = [];
+  final FirebaseService _db = FirebaseService();
 
-  void _addTask() {
+  void _addTask(List<Map<String, dynamic>> currentTasks) {
     final titleController = TextEditingController();
     final timeController = TextEditingController();
 
@@ -63,16 +65,16 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (titleController.text.trim().isNotEmpty) {
-                      setState(() {
-                        _tasks.add({
-                          'title': titleController.text.trim(),
-                          'time': timeController.text.trim().isNotEmpty ? timeController.text.trim() : 'Anytime',
-                          'completed': false,
-                        });
+                      final updatedList = List<Map<String, dynamic>>.from(currentTasks);
+                      updatedList.add({
+                        'title': titleController.text.trim(),
+                        'time': timeController.text.trim().isNotEmpty ? timeController.text.trim() : 'Anytime',
+                        'completed': false,
                       });
-                      Navigator.pop(ctx);
+                      await _db.syncTasks(widget.uid, updatedList);
+                      if (mounted) Navigator.pop(ctx);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -91,67 +93,74 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0C29),
-      appBar: AppBar(
-        title: const Text('Smart Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamTasks(widget.uid),
+      builder: (context, snapshot) {
+        final tasks = snapshot.data ?? [];
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F0C29),
+          appBar: AppBar(
+            title: const Text('Smart Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildCalendarStrip(),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Today's Schedule", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                  Icon(Icons.tune, size: 20, color: Colors.white.withOpacity(0.4)),
+                  _buildCalendarStrip(),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Today's Schedule", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                      Icon(Icons.tune, size: 20, color: Colors.white.withOpacity(0.4)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: tasks.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.event_note, size: 60, color: Colors.white.withOpacity(0.2)),
+                                const SizedBox(height: 16),
+                                Text("No plans scheduled", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                                const SizedBox(height: 8),
+                                Text("Tap + to plan your day", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: tasks.length,
+                            itemBuilder: (context, index) {
+                              final task = tasks[index];
+                              return _buildTaskCard(task, index, tasks);
+                            },
+                          ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _tasks.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.event_note, size: 60, color: Colors.white.withOpacity(0.2)),
-                            const SizedBox(height: 16),
-                            Text("No plans scheduled", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
-                            const SizedBox(height: 8),
-                            Text("Tap + to plan your day", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _tasks.length,
-                        itemBuilder: (context, index) {
-                          final task = _tasks[index];
-                          return _buildTaskCard(task, index);
-                        },
-                      ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addTask,
-        backgroundColor: const Color(0xFFBC13FE),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _addTask(tasks),
+            backgroundColor: const Color(0xFFBC13FE),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      }
     );
   }
 
@@ -180,7 +189,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 const SizedBox(height: 4),
                 Text(
                   date.day.toString(),
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
@@ -190,17 +199,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
-  Widget _buildTaskCard(Map<String, dynamic> task, int index) {
+  Widget _buildTaskCard(Map<String, dynamic> task, int index, List<Map<String, dynamic>> currentTasks) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _tasks[index]['completed'] = !_tasks[index]['completed'];
-        });
+      onTap: () async {
+        final updatedList = List<Map<String, dynamic>>.from(currentTasks);
+        updatedList[index]['completed'] = !updatedList[index]['completed'];
+        await _db.syncTasks(widget.uid, updatedList);
       },
-      onLongPress: () {
-        setState(() {
-          _tasks.removeAt(index);
-        });
+      onLongPress: () async {
+        final updatedList = List<Map<String, dynamic>>.from(currentTasks);
+        updatedList.removeAt(index);
+        await _db.syncTasks(widget.uid, updatedList);
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -258,10 +267,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 ),
                 Checkbox(
                   value: task['completed'],
-                  onChanged: (val) {
-                    setState(() {
-                      _tasks[index]['completed'] = val ?? false;
-                    });
+                  onChanged: (val) async {
+                    final updatedList = List<Map<String, dynamic>>.from(currentTasks);
+                    updatedList[index]['completed'] = val ?? false;
+                    await _db.syncTasks(widget.uid, updatedList);
                   },
                   activeColor: const Color(0xFFBC13FE),
                   checkColor: Colors.white,

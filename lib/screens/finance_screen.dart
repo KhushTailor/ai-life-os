@@ -1,27 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../services/firebase_service.dart';
 
 class FinanceScreen extends StatefulWidget {
-  const FinanceScreen({super.key});
+  final String uid;
+  const FinanceScreen({super.key, required this.uid});
 
   @override
   State<FinanceScreen> createState() => _FinanceScreenState();
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  final List<Map<String, dynamic>> _transactions = [];
+  final FirebaseService _db = FirebaseService();
 
-  double get _totalIncome => _transactions
-      .where((tx) => tx['amount'] > 0)
-      .fold(0.0, (sum, tx) => sum + tx['amount']);
-
-  double get _totalExpenses => _transactions
-      .where((tx) => tx['amount'] < 0)
-      .fold(0.0, (sum, tx) => sum + tx['amount'].abs());
-
-  double get _balance => _totalIncome - _totalExpenses;
-
-  void _addTransaction({bool isExpense = true}) {
+  void _addTransaction(List<Map<String, dynamic>> currentTxs, {bool isExpense = true}) {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
 
@@ -81,17 +73,17 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     child: SizedBox(
                       height: 50,
                       child: OutlinedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (titleController.text.trim().isNotEmpty && amountController.text.trim().isNotEmpty) {
                             final amount = double.tryParse(amountController.text.trim()) ?? 0;
-                            setState(() {
-                              _transactions.add({
-                                'title': titleController.text.trim(),
-                                'amount': amount,
-                                'date': 'Today',
-                              });
+                            final updatedList = List<Map<String, dynamic>>.from(currentTxs);
+                            updatedList.add({
+                              'title': titleController.text.trim(),
+                              'amount': amount,
+                              'date': 'Today',
                             });
-                            Navigator.pop(ctx);
+                            await _db.syncFinance(widget.uid, updatedList);
+                            if (mounted) Navigator.pop(ctx);
                           }
                         },
                         style: OutlinedButton.styleFrom(
@@ -107,17 +99,17 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     child: SizedBox(
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (titleController.text.trim().isNotEmpty && amountController.text.trim().isNotEmpty) {
                             final amount = double.tryParse(amountController.text.trim()) ?? 0;
-                            setState(() {
-                              _transactions.add({
-                                'title': titleController.text.trim(),
-                                'amount': -amount,
-                                'date': 'Today',
-                              });
+                            final updatedList = List<Map<String, dynamic>>.from(currentTxs);
+                            updatedList.add({
+                              'title': titleController.text.trim(),
+                              'amount': -amount,
+                              'date': 'Today',
                             });
-                            Navigator.pop(ctx);
+                            await _db.syncFinance(widget.uid, updatedList);
+                            if (mounted) Navigator.pop(ctx);
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -139,77 +131,88 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0C29),
-      appBar: AppBar(
-        title: const Text('Finance Hub', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamFinance(widget.uid),
+      builder: (context, snapshot) {
+        final txs = snapshot.data ?? [];
+        
+        final totalIncome = txs.where((tx) => tx['amount'] > 0).fold(0.0, (sum, tx) => sum + tx['amount']);
+        final totalExpenses = txs.where((tx) => tx['amount'] < 0).fold(0.0, (sum, tx) => sum + tx['amount'].abs());
+        final balance = totalIncome - totalExpenses;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F0C29),
+          appBar: AppBar(
+            title: const Text('Finance Hub', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildBalanceCard(),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F0C29), Color(0xFF302B63), Color(0xFF24243E)],
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Recent Activity", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text("See All", style: TextStyle(color: const Color(0xFFBC13FE).withOpacity(0.8))),
+                  _buildBalanceCard(balance, totalIncome, totalExpenses),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Recent Activity", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text("See All", style: TextStyle(color: const Color(0xFFBC13FE).withOpacity(0.8))),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+                  txs.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 40),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.receipt_long, size: 60, color: Colors.white.withOpacity(0.2)),
+                                const SizedBox(height: 16),
+                                Text("No transactions recorded", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                                const SizedBox(height: 8),
+                                Text("Tap + to add your first transaction", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: txs.length,
+                          itemBuilder: (context, index) {
+                            final tx = txs[index];
+                            return _buildTransactionItem(tx, index, txs);
+                          },
+                        ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _transactions.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 40),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(Icons.receipt_long, size: 60, color: Colors.white.withOpacity(0.2)),
-                            const SizedBox(height: 16),
-                            Text("No transactions recorded", style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
-                            const SizedBox(height: 8),
-                            Text("Tap + to add your first transaction", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _transactions.length,
-                      itemBuilder: (context, index) {
-                        final tx = _transactions[index];
-                        return _buildTransactionItem(tx, index);
-                      },
-                    ),
-            ],
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addTransaction,
-        backgroundColor: const Color(0xFFBC13FE),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Add", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _addTransaction(txs),
+            backgroundColor: const Color(0xFFBC13FE),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text("Add", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        );
+      }
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(double balance, double income, double expenses) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(25),
       child: BackdropFilter(
@@ -235,15 +238,15 @@ class _FinanceScreenState extends State<FinanceScreen> {
               Text('Total Balance', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
               const SizedBox(height: 8),
               Text(
-                '\$${_balance.toStringAsFixed(2)}',
+                '\$${balance.toStringAsFixed(2)}',
                 style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildBalanceStat('Income', '+\$${_totalIncome.toStringAsFixed(0)}', Colors.greenAccent),
-                  _buildBalanceStat('Expenses', '\$${_totalExpenses.toStringAsFixed(0)}', Colors.orangeAccent),
+                  _buildBalanceStat('Income', '+\$${income.toStringAsFixed(0)}', Colors.greenAccent),
+                  _buildBalanceStat('Expenses', '\$${expenses.toStringAsFixed(0)}', Colors.orangeAccent),
                 ],
               ),
             ],
@@ -264,14 +267,14 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> tx, int index) {
+  Widget _buildTransactionItem(Map<String, dynamic> tx, int index, List<Map<String, dynamic>> currentTxs) {
     final bool isIncome = tx['amount'] > 0;
 
     return GestureDetector(
-      onLongPress: () {
-        setState(() {
-          _transactions.removeAt(index);
-        });
+      onLongPress: () async {
+        final updatedList = List<Map<String, dynamic>>.from(currentTxs);
+        updatedList.removeAt(index);
+        await _db.syncFinance(widget.uid, updatedList);
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),

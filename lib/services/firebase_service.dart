@@ -57,9 +57,46 @@ class FirebaseService {
     }
   }
 
+  // Email/Password Sign Up
+  Future<User?> signUpWithEmail(String email, String password, String name) async {
+    try {
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
+      if (user != null) {
+        await user.updateDisplayName(name);
+        await syncUserData(user.uid, {'name': name, 'email': email, 'createdAt': FieldValue.serverTimestamp()});
+      }
+      return user;
+    } catch (e) {
+      print("Email Sign-Up Error: $e");
+      rethrow;
+    }
+  }
+
+  // Email/Password Sign In
+  Future<User?> signInWithEmail(String email, String password) async {
+    try {
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userCredential.user;
+    } catch (e) {
+      print("Email Sign-In Error: $e");
+      rethrow;
+    }
+  }
+
   // Sign Out
   Future<void> signOut() async {
-    await GoogleSignIn().signOut();
+    try {
+      await GoogleSignIn().signOut();
+    } catch (e) {
+      // Ignore google sign out errors if not signed in via google
+    }
     await _auth.signOut();
   }
 
@@ -73,12 +110,40 @@ class FirebaseService {
     await _db.collection('users').doc(uid).collection('tasks').doc('current').set({'list': tasks});
   }
 
-  Future<void> syncGoals(String uid, List<Map<String, dynamic>> goals) async {
-    await _db.collection('users').doc(uid).collection('goals').doc('current').set({'list': goals});
+  Future<void> syncHabits(String uid, List<Map<String, dynamic>> habits) async { // Renamed from syncGoals for clarity
+    await _db.collection('users').doc(uid).collection('habits').doc('current').set({'list': habits});
   }
 
   Future<void> syncFinance(String uid, List<Map<String, dynamic>> txs) async {
     await _db.collection('users').doc(uid).collection('finance').doc('current').set({'list': txs});
+  }
+
+  // Streams for real-time UI
+  Stream<List<Map<String, dynamic>>> streamTasks(String uid) {
+    return _db.collection('users').doc(uid).collection('tasks').doc('current').snapshots().map((doc) {
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('list')) {
+        return List<Map<String, dynamic>>.from(doc.data()!['list']);
+      }
+      return [];
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamHabits(String uid) {
+    return _db.collection('users').doc(uid).collection('habits').doc('current').snapshots().map((doc) {
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('list')) {
+        return List<Map<String, dynamic>>.from(doc.data()!['list']);
+      }
+      return [];
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamFinance(String uid) {
+    return _db.collection('users').doc(uid).collection('finance').doc('current').snapshots().map((doc) {
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('list')) {
+        return List<Map<String, dynamic>>.from(doc.data()!['list']);
+      }
+      return [];
+    });
   }
 
   // Fetch Data from Firestore
