@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "life-os-placeholder",
-    "storage_bucket": "life-os-placeholder.appspot.com"
+    "project_number": "165104335983",
+    "project_id": "life-os-29eb0",
+    "storage_bucket": "life-os-29eb0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:165104335983:android:c6ed235c3eb903890e219a",
         "android_client_info": {
           "package_name": "com.lifeos.ai.life_os"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "dummy-key-placeholder"
+          "current_key": "AIzaSyDBqWBgvKyyGoZxkrdJUJ2CLSH6UyUrZxk"
         }
       ],
       "services": {

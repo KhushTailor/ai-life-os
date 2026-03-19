@@ -59,3 +59,11 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    // Add the dependency for the Google Analytics library
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation("com.google.firebase:firebase-analytics")
+}
