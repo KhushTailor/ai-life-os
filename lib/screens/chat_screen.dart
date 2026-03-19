@@ -24,6 +24,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
 
+  bool get _isLight => widget.activeTheme.brightness == Brightness.light;
+  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
+  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
+  Color get _borderColor => _isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
+
   @override
   void initState() {
     super.initState();
@@ -97,8 +102,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void _listen() async {
     if (!_isListening) {
       bool available = await _speech.initialize(
-        onStatus: (val) => print('onStatus: $val'),
-        onError: (val) => print('onError: $val'),
+        onStatus: (val) => debugPrint('onStatus: $val'),
+        onError: (val) => debugPrint('onError: $val'),
       );
       if (available) {
         setState(() => _isListening = true);
@@ -119,11 +124,11 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.auto_awesome, color: Color(0xFFBC13FE), size: 20),
-            SizedBox(width: 10),
-            Text('AI Assistant', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Icon(Icons.auto_awesome, color: widget.activeTheme.accentColor, size: 20),
+            const SizedBox(width: 10),
+            Text('AI Assistant', style: TextStyle(fontWeight: FontWeight.bold, color: _textPrimary)),
           ],
         ),
         backgroundColor: Colors.transparent,
@@ -136,9 +141,9 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
+                color: Colors.redAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -146,7 +151,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _initAI,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withValues(alpha: 0.2)),
                     child: const Text('Retry Connection', style: TextStyle(color: Colors.white)),
                   ),
                 ],
@@ -167,17 +172,24 @@ class _ChatScreenState extends State<ChatScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: isUser 
-                        ? const LinearGradient(colors: [Color(0xFFBC13FE), Color(0xFF4A00E0)])
-                        : LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+                        ? LinearGradient(colors: [widget.activeTheme.accentColor, widget.activeTheme.accentColor.withValues(alpha: 0.7)])
+                        : LinearGradient(colors: [
+                            _isLight ? Colors.black.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.1),
+                            _isLight ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05),
+                          ]),
                       borderRadius: BorderRadius.circular(20).copyWith(
                         bottomRight: isUser ? const Radius.circular(0) : null,
                         bottomLeft: !isUser ? const Radius.circular(0) : null,
                       ),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: _borderColor),
                     ),
                     child: Text(
                       _messages[i]['content']!,
-                      style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
+                      style: TextStyle(
+                        color: isUser ? Colors.white : _textPrimary,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                 );
@@ -186,13 +198,13 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           
           if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 20),
-              child: Center(child: CircularProgressIndicator(color: Color(0xFFBC13FE))),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Center(child: CircularProgressIndicator(color: widget.activeTheme.accentColor)),
             ),
             
           Padding(
-            padding: const EdgeInsets.all(16).copyWith(bottom: 100), // Leave space for floating nav
+            padding: const EdgeInsets.all(16).copyWith(bottom: 100),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(25),
               child: BackdropFilter(
@@ -200,9 +212,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
+                    color: _isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: _borderColor),
                   ),
                   child: Row(
                     children: [
@@ -210,10 +222,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: TextField(
                           controller: _controller,
                           enabled: _isAIAvailable,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: _textPrimary),
                           decoration: InputDecoration(
                             hintText: _isAIAvailable ? 'Ask me anything...' : 'AI offline',
-                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                            hintStyle: TextStyle(color: _textTertiary),
                             border: InputBorder.none,
                           ),
                           onSubmitted: (_) => _sendMessage(),
@@ -224,7 +236,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         onPressed: _listen,
                       ),
                       IconButton(
-                        icon: const Icon(Icons.send_rounded, color: Color(0xFFBC13FE)),
+                        icon: Icon(Icons.send_rounded, color: widget.activeTheme.accentColor),
                         onPressed: _sendMessage,
                       ),
                     ],

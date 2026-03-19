@@ -28,6 +28,12 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _apiKeyController = TextEditingController();
 
+  GlassTheme get _curTheme => GlassTheme.themes[widget.activeTheme] ?? GlassTheme.themes['nebula_deep']!;
+  bool get _isLight => _curTheme.brightness == Brightness.light;
+  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
+  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
+  Color get _borderColor => _isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
+
   @override
   void initState() {
     super.initState();
@@ -68,26 +74,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
+          color: _isLight ? Colors.white : const Color(0xFF1A1A2E),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: _borderColor),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: _isLight ? Colors.grey[300] : Colors.grey[700], borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
-            const Text('Select Currency', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('Select Currency', style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             ...currencies.map((c) {
               final symbol = c.keys.first;
               final label = c.values.first;
               final isSelected = widget.currency == symbol;
               return ListTile(
-                title: Text(label, style: TextStyle(color: isSelected ? const Color(0xFFBC13FE) : Colors.white)),
-                trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFFBC13FE)) : null,
+                title: Text(label, style: TextStyle(color: isSelected ? _curTheme.accentColor : _textPrimary)),
+                trailing: isSelected ? Icon(Icons.check_circle, color: _curTheme.accentColor) : null,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                tileColor: isSelected ? const Color(0xFFBC13FE).withOpacity(0.1) : null,
+                tileColor: isSelected ? _curTheme.accentColor.withValues(alpha: 0.1) : null,
                 onTap: () {
                   widget.onCurrencyChanged(symbol);
                   Navigator.pop(ctx);
@@ -102,12 +108,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final curTheme = GlassTheme.themes[widget.activeTheme] ?? GlassTheme.themes['nebula_deep']!;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Settings & AI', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text('Settings & AI', style: TextStyle(fontWeight: FontWeight.bold, color: _textPrimary)),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
@@ -115,24 +119,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20).copyWith(bottom: 120),
         children: [
           // AI Config Section
-          Text('AI ASSISTANT CONFIG', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          Text('AI ASSISTANT CONFIG', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           const SizedBox(height: 16),
           _buildPremiumCard(
-            curTheme: curTheme,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Gemini API Key', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                Text('Gemini API Key', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _apiKeyController,
                   obscureText: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: _textPrimary, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Paste your API Key here',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: TextStyle(color: _textTertiary),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: _isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.save_rounded, color: Colors.greenAccent),
@@ -143,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'Your key is stored locally on this device.',
-                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+                  style: TextStyle(color: _textTertiary, fontSize: 10),
                 ),
               ],
             ),
@@ -152,14 +155,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 30),
 
           // Theme Selection
-          Text('UNIVERSAL GLASS THEMES', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          Text('UNIVERSAL GLASS THEMES', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           const SizedBox(height: 16),
           ...GlassTheme.themes.entries.map((entry) => _buildThemeCard(entry.key, entry.value)),
 
           const SizedBox(height: 30),
 
           // Preferences
-          Text('PREFERENCES', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          Text('PREFERENCES', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           const SizedBox(height: 16),
           _buildActionTile(Icons.attach_money_rounded, 'Currency', 'Selected: ${widget.currency}', onTap: _showCurrencyPicker, color: Colors.greenAccent),
           
@@ -171,9 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
+                color: Colors.redAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -190,7 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPremiumCard({required GlassTheme curTheme, required Widget child}) {
+  Widget _buildPremiumCard({required Widget child}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
@@ -198,9 +201,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: (curTheme.brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.08),
+            color: (_isLight ? Colors.black : Colors.white).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: _borderColor),
           ),
           child: child,
         ),
@@ -218,10 +221,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? theme.accentColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+          color: isSelected ? theme.accentColor.withValues(alpha: 0.15) : (_isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? theme.accentColor : Colors.white.withOpacity(0.1),
+            color: isSelected ? theme.accentColor : _borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -232,21 +235,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 gradient: LinearGradient(colors: theme.backgroundGradient),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: _borderColor),
               ),
-              child: Center(child: Icon(theme.brightness == Brightness.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 16, color: Colors.white.withOpacity(0.6))),
+              child: Center(child: Icon(theme.brightness == Brightness.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 16, color: Colors.white.withValues(alpha: 0.6))),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(theme.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text(theme.description, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                  Text(theme.name, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
+                  Text(theme.description, style: TextStyle(color: _textTertiary, fontSize: 11)),
                 ],
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle_rounded, color: theme.accentColor) else Icon(Icons.radio_button_off_rounded, color: Colors.white.withOpacity(0.2)),
+            if (isSelected) Icon(Icons.check_circle_rounded, color: theme.accentColor) else Icon(Icons.radio_button_off_rounded, color: _textTertiary),
           ],
         ),
       ),
@@ -260,15 +263,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: _isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: _borderColor),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 16),
@@ -276,12 +279,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                  Text(title, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
+                  Text(subtitle, style: TextStyle(color: _textTertiary, fontSize: 12)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withOpacity(0.2), size: 14),
+            Icon(Icons.arrow_forward_ios_rounded, color: _textTertiary, size: 14),
           ],
         ),
       ),

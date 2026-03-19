@@ -15,6 +15,12 @@ class HabitScreen extends StatefulWidget {
 class _HabitScreenState extends State<HabitScreen> {
   final FirebaseService _db = FirebaseService();
 
+  bool get _isLight => widget.activeTheme.brightness == Brightness.light;
+  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
+  Color get _textSecondary => _isLight ? Colors.black54 : Colors.white70;
+  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
+  Color get _borderColor => _isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
+
   void _addHabit(List<Map<String, dynamic>> currentHabits) {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
@@ -28,37 +34,37 @@ class _HabitScreenState extends State<HabitScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: (widget.activeTheme.brightness == Brightness.dark ? const Color(0xFF1A1A2E) : Colors.white),
+            color: _isLight ? Colors.white : const Color(0xFF1A1A2E),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: _borderColor),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: _isLight ? Colors.grey[300] : Colors.grey[700], borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
-              Text('New Artificial Insight Habit', style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('New Habit', style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               TextField(
                 controller: nameController,
-                style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
+                style: TextStyle(color: _textPrimary),
                 decoration: InputDecoration(
                   hintText: 'What is your goal?',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(color: _textTertiary),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.1),
+                  fillColor: (_isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: categoryController,
-                style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
+                style: TextStyle(color: _textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Category (e.g. Health, Work)',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  hintStyle: TextStyle(color: _textTertiary),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.1),
+                  fillColor: (_isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   prefixIcon: Icon(Icons.category_rounded, color: widget.activeTheme.accentColor),
                 ),
@@ -107,15 +113,15 @@ class _HabitScreenState extends State<HabitScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: _isLight ? Colors.white : const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Habit Evolution! 🔥', style: TextStyle(color: Colors.white)),
+        title: Text('Habit Evolution! 🔥', style: TextStyle(color: _textPrimary)),
         content: Text(
           'Your ${habit['name']} streak is $currentStreak! \n\nAI suggests increasing your difficulty level for faster growth.',
-          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+          style: TextStyle(color: _textSecondary),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Not Yet', style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Not Yet', style: TextStyle(color: _textTertiary))),
           ElevatedButton(
             onPressed: () {
               final updated = List<Map<String, dynamic>>.from(allHabits);
@@ -143,20 +149,39 @@ class _HabitScreenState extends State<HabitScreen> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
-            title: const Text('Habit Evolution', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            title: Text('Habit Evolution', style: TextStyle(fontWeight: FontWeight.bold, color: _textPrimary)),
             backgroundColor: Colors.transparent,
             elevation: 0,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: IconButton(
+                  onPressed: isLoading ? null : () => _addHabit(habits),
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.activeTheme.accentColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: widget.activeTheme.accentColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Icon(Icons.add_rounded, color: widget.activeTheme.accentColor, size: 20),
+                  ),
+                ),
+              ),
+            ],
           ),
           body: isLoading 
-              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              ? Center(child: CircularProgressIndicator(color: _textPrimary))
               : habits.isEmpty 
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.track_changes_rounded, size: 64, color: Colors.white.withOpacity(0.2)),
+                          Icon(Icons.track_changes_rounded, size: 64, color: _textTertiary),
                           const SizedBox(height: 16),
-                          Text('No habits tracked yet', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                          Text('No habits tracked yet', style: TextStyle(color: _textTertiary, fontSize: 16)),
+                          const SizedBox(height: 8),
+                          Text('Tap + to start building habits', style: TextStyle(color: _textTertiary, fontSize: 13)),
                         ],
                       ),
                     )
@@ -167,12 +192,6 @@ class _HabitScreenState extends State<HabitScreen> {
                         return _buildGlassHabitCard(habits[i], i, habits);
                       },
                     ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: isLoading ? null : () => _addHabit(habits),
-            backgroundColor: widget.activeTheme.accentColor,
-            icon: const Icon(Icons.add_rounded, color: Colors.white),
-            label: const Text('New Habit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
         );
       },
     );
@@ -194,7 +213,7 @@ class _HabitScreenState extends State<HabitScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: widget.activeTheme.cardGradient),
               borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: _borderColor),
             ),
             child: Column(
               children: [
@@ -219,7 +238,7 @@ class _HabitScreenState extends State<HabitScreen> {
                       child: Container(
                         width: 32, height: 32,
                         decoration: BoxDecoration(
-                          color: isDone ? Colors.greenAccent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                          color: isDone ? Colors.greenAccent.withValues(alpha: 0.2) : widget.activeTheme.accentColor.withValues(alpha: 0.05),
                           shape: BoxShape.circle,
                           border: Border.all(color: isDone ? Colors.greenAccent : widget.activeTheme.accentColor, width: 2),
                         ),
@@ -231,8 +250,8 @@ class _HabitScreenState extends State<HabitScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(habit['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text(habit['category'], style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, letterSpacing: 0.5)),
+                          Text(habit['name'], style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(habit['category'], style: TextStyle(color: _textTertiary, fontSize: 11, letterSpacing: 0.5)),
                         ],
                       ),
                     ),
@@ -251,7 +270,7 @@ class _HabitScreenState extends State<HabitScreen> {
                       height: 4,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: _isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(2),
                       ),
                       child: FractionallySizedBox(
@@ -261,7 +280,7 @@ class _HabitScreenState extends State<HabitScreen> {
                           decoration: BoxDecoration(
                             color: Colors.orangeAccent,
                             borderRadius: BorderRadius.circular(2),
-                            boxShadow: [BoxShadow(color: Colors.orangeAccent.withOpacity(0.5), blurRadius: 4)],
+                            boxShadow: [BoxShadow(color: Colors.orangeAccent.withValues(alpha: 0.5), blurRadius: 4)],
                           ),
                         ),
                       ),

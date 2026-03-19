@@ -1,17 +1,26 @@
-# life_os
+# AI Life OS
 
-A new Flutter project.
+**AI Life OS — Intelligent Personal Operating System**
 
-## Getting Started
+A flagship mobile application designed as a sophisticated, intelligent "Super-App" that takes over planning, tracking, thinking, and executing tasks on your behalf.
 
-This project is a starting point for a Flutter application.
+## Current Version: V5 Brain Expansion
+### Features Include:
+- **Dashboard**: Premium Instagram-like visual overview.
+- **Smart Planner**: Calendar-based task management with optimistic syncing.
+- **Habit Tracker**: Track habits and streak evolution with Gemini AI.
+- **Finance Hub**: Automatic AI transaction categorization.
+- **AI Chat Assistant**: Deeply integrated Gemini 1.5 Flash assistant.
+- **Zen Focus Mode**: High immersion Pomodoro environment.
+- **Voice Intelligence**: Hands-free voice input integration.
+- **Glassmorphic UI**: Premium Apple-style glassmorphic visuals with 6 globally reactive themes.
+- **Cloud Persistence**: Deeply integrated with Cloud Firestore and dual-layer Firebase Auth (Google & Apple).
 
-A few resources to get you started if this is your first Flutter project:
+## Environment Setup
+To configure this app, ensure you provide standard Flutter environment flags indicating your Gemini API key:
+`--dart-define=GEMINI_API_KEY="..."`
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Building
+```bash
+flutter build apk --release
+```

@@ -29,6 +29,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final FirebaseService _db = FirebaseService();
 
+  bool get _isLight => widget.activeTheme.brightness == Brightness.light;
+  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
+  Color get _textSecondary => _isLight ? Colors.black54 : Colors.white70;
+  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
+  Color get _borderColor => _isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.12);
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
@@ -82,9 +88,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('${_getGreeting()},', style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6))),
+                                    Text('${_getGreeting()},', style: TextStyle(fontSize: 14, color: _textTertiary)),
                                     const SizedBox(height: 4),
-                                    Text(widget.userName, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    Text(widget.userName, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _textPrimary)),
                                   ],
                                 ),
                               ),
@@ -93,22 +99,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.08),
+                                    color: _isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                    border: Border.all(color: _borderColor),
                                   ),
-                                  child: Icon(Icons.settings_rounded, color: Colors.white.withOpacity(0.7), size: 22),
+                                  child: Icon(Icons.settings_rounded, color: _textSecondary, size: 22),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text(_getFormattedDate(), style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+                          Text(_getFormattedDate(), style: TextStyle(color: _textTertiary, fontSize: 13)),
 
                           const SizedBox(height: 28),
 
-                          // Lifecycle Report Chart (Visual Upgrade)
-                          Text('LIFECYCLE OVERVIEW', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                          // Lifecycle Report Chart
+                          Text('LIFECYCLE OVERVIEW', style: TextStyle(color: _textTertiary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                           const SizedBox(height: 16),
                           _buildPremiumCard(
                             child: Column(
@@ -163,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: widget.activeTheme.accentColor.withOpacity(0.2),
+                                    color: widget.activeTheme.accentColor.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(Icons.psychology_rounded, color: widget.activeTheme.accentColor, size: 24),
@@ -173,13 +179,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('AI Focus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                      Text('Ready for a deep work session?', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                                      Text('AI Focus', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Text('Ready for a deep work session?', style: TextStyle(color: _textTertiary, fontSize: 12)),
                                     ],
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () => widget.onNavigate(6), // Focus Screen
+                                  onPressed: () => widget.onNavigate(6),
                                   child: Text('EXPLORE', style: TextStyle(color: widget.activeTheme.accentColor, fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ],
@@ -191,11 +197,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           // Quick Actions
                           Row(
                             children: [
-                              Expanded(child: _buildQuickAction('AI AI', Icons.auto_awesome, widget.activeTheme.accentColor, 1)),
+                              Expanded(child: _buildQuickAction('AI Chat', Icons.auto_awesome, widget.activeTheme.accentColor, 1)),
                               const SizedBox(width: 12),
                               Expanded(child: _buildQuickAction('Plan', Icons.calendar_today_rounded, Colors.cyanAccent, 2)),
                               const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Deep', Icons.track_changes_rounded, Colors.greenAccent, 3)),
+                              Expanded(child: _buildQuickAction('Habits', Icons.track_changes_rounded, Colors.greenAccent, 3)),
                             ],
                           ),
                         ],
@@ -217,25 +223,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     if (expenses == 0 && income == 0) {
       return [
-        PieChartSectionData(color: Colors.grey.withOpacity(0.2), value: 1, radius: 20, title: ''),
+        PieChartSectionData(color: (_isLight ? Colors.grey[300]! : Colors.grey).withValues(alpha: 0.2), value: 1, radius: 20, title: ''),
       ];
     }
 
     return [
       PieChartSectionData(
-        color: Colors.redAccent.withOpacity(0.6),
+        color: Colors.redAccent.withValues(alpha: 0.6),
         value: expenses,
         radius: 25,
         title: '',
-        badgeWidget: const Icon(Icons.trending_down, color: Colors.white, size: 14),
+        badgeWidget: Icon(Icons.trending_down, color: _textPrimary, size: 14),
         badgePositionPercentageOffset: 1.3,
       ),
       PieChartSectionData(
-        color: Colors.greenAccent.withOpacity(0.6),
+        color: Colors.greenAccent.withValues(alpha: 0.6),
         value: income,
         radius: 25,
         title: '',
-        badgeWidget: const Icon(Icons.trending_up, color: Colors.white, size: 14),
+        badgeWidget: Icon(Icons.trending_up, color: _textPrimary, size: 14),
         badgePositionPercentageOffset: 1.3,
       ),
     ];
@@ -246,7 +252,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+        Text(label, style: TextStyle(color: _textTertiary, fontSize: 12)),
       ],
     );
   }
@@ -265,7 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               colors: widget.activeTheme.cardGradient,
             ),
             borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
-            border: Border.all(color: Colors.white.withOpacity(0.12)),
+            border: Border.all(color: _borderColor),
           ),
           child: child,
         ),
@@ -286,7 +292,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
-          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+          Text(label, style: TextStyle(color: _textTertiary, fontSize: 12)),
         ],
       ),
     );
@@ -300,7 +306,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, fontWeight: FontWeight.w600)),
+            Text(label, style: TextStyle(color: _textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

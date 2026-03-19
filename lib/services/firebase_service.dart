@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  /// Ensure Firestore keeps data cached locally for offline resilience
+  static Future<void> enablePersistence() async {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  }
 
   // Stream of User Auth State
   Stream<User?> get user => _auth.authStateChanges();
@@ -50,7 +59,7 @@ class FirebaseService {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       return userCredential.user;
     } catch (e) {
-      print("Google Sign-In Error: $e");
+      debugPrint("Google Sign-In Error: $e");
       return null;
     }
   }
@@ -71,7 +80,7 @@ class FirebaseService {
       }
       return user;
     } catch (e) {
-      print("Email Sign-Up Error: $e");
+      debugPrint("Email Sign-Up Error: $e");
       rethrow;
     }
   }
@@ -85,7 +94,7 @@ class FirebaseService {
       );
       return userCredential.user;
     } catch (e) {
-      print("Email Sign-In Error: $e");
+      debugPrint("Email Sign-In Error: $e");
       rethrow;
     }
   }

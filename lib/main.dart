@@ -32,6 +32,9 @@ void main() async {
     await Firebase.initializeApp();
   }
 
+  // Enable Firestore local disk cache for offline resilience
+  await FirebaseService.enablePersistence();
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -151,14 +154,16 @@ class _LifeOSAppState extends State<LifeOSApp> {
   Widget build(BuildContext context) {
     final theme = GlassTheme.themes[_activeThemeKey] ?? GlassTheme.themes['nebula_deep']!;
 
+    final isLight = theme.brightness == Brightness.light;
+
     return MaterialApp(
       title: 'Life OS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: theme.brightness,
         scaffoldBackgroundColor: Colors.transparent,
-        cardColor: Colors.black,
-        dividerColor: Colors.white.withOpacity(0.1),
+        cardColor: isLight ? Colors.white : Colors.black,
+        dividerColor: isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1),
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,
@@ -190,6 +195,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
   }
 
   Widget _buildFloatingNavBar(GlassTheme theme) {
+    final isLight = theme.brightness == Brightness.light;
     return Container(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
       child: ClipRRect(
@@ -199,12 +205,12 @@ class _LifeOSAppState extends State<LifeOSApp> {
           child: Container(
             height: 70,
             decoration: BoxDecoration(
-              color: (theme.brightness == Brightness.dark ? Colors.black : Colors.white).withOpacity(0.7),
+              color: (isLight ? Colors.white : Colors.black).withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              border: Border.all(color: isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.12)),
               boxShadow: [
                 BoxShadow(
-                  color: theme.accentColor.withOpacity(0.1),
+                  color: theme.accentColor.withValues(alpha: 0.1),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -227,7 +233,9 @@ class _LifeOSAppState extends State<LifeOSApp> {
   }
 
   Widget _buildNavItem(IconData icon, String label, int index, GlassTheme theme) {
-    final isSelected = _selectedIndex == index || (_selectedIndex == 5 && index == 0);
+    final isSelected = _selectedIndex == index || (_selectedIndex == 5 && index == 0) || (_selectedIndex == 6 && index == 0);
+    final isLight = theme.brightness == Brightness.light;
+    final inactiveColor = isLight ? Colors.grey[600] : Colors.grey[500];
 
     return GestureDetector(
       onTap: () => setState(() => _selectedIndex = index),
@@ -237,7 +245,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: isSelected
             ? BoxDecoration(
-                color: theme.accentColor.withOpacity(0.15),
+                color: theme.accentColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               )
             : null,
@@ -246,14 +254,14 @@ class _LifeOSAppState extends State<LifeOSApp> {
           children: [
             Icon(
               icon,
-              color: isSelected ? theme.accentColor : (theme.brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[700]),
+              color: isSelected ? theme.accentColor : inactiveColor,
               size: isSelected ? 26 : 22,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? theme.accentColor : (theme.brightness == Brightness.dark ? Colors.grey[500] : Colors.grey[700]),
+                color: isSelected ? theme.accentColor : inactiveColor,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),

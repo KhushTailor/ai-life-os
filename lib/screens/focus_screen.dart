@@ -65,8 +65,8 @@ class _FocusScreenState extends State<FocusScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              widget.activeTheme.backgroundGradient[0].withOpacity(0.8),
-              widget.activeTheme.backgroundGradient[1].withOpacity(0.9),
+              widget.activeTheme.backgroundGradient[0].withValues(alpha: 0.8),
+              widget.activeTheme.backgroundGradient[1].withValues(alpha: 0.9),
             ],
           ),
         ),
@@ -91,8 +91,8 @@ class _FocusScreenState extends State<FocusScreen> {
                   height: 250,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.05),
-                    border: Border.all(color: Colors.white.withOpacity(0.1), width: 2),
+                    color: Colors.white.withValues(alpha: 0.05),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 2),
                   ),
                   child: Center(
                     child: Text(
@@ -113,7 +113,7 @@ class _FocusScreenState extends State<FocusScreen> {
                 _buildControlButton(
                   icon: Icons.refresh_rounded, 
                   onTap: _resetTimer,
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                 ),
                 const SizedBox(width: 30),
                 _buildControlButton(
@@ -126,7 +126,7 @@ class _FocusScreenState extends State<FocusScreen> {
                 _buildControlButton(
                   icon: Icons.music_note_rounded,
                   onTap: () {}, // Sound toggle coming soon
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                 ),
               ],
             ),
@@ -134,7 +134,7 @@ class _FocusScreenState extends State<FocusScreen> {
             const SizedBox(height: 40),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('EXIT CONCENTRATION', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, letterSpacing: 2)),
+              child: Text('EXIT CONCENTRATION', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, letterSpacing: 2)),
             ),
           ],
         ),
@@ -152,7 +152,7 @@ class _FocusScreenState extends State<FocusScreen> {
           color: color,
           shape: BoxShape.circle,
           boxShadow: [
-            if (isLarge) BoxShadow(color: color.withOpacity(0.4), blurRadius: 20, spreadRadius: 2),
+            if (isLarge) BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 2),
           ],
         ),
         child: Icon(icon, color: Colors.white, size: isLarge ? 40 : 24),

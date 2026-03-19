@@ -12,13 +12,12 @@ class AIInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF0095F6).withOpacity(0.05),
-        border: Border.all(color: const Color(0xFF0095F6).withOpacity(0.2)),
+        color: const Color(0xFF0095F6).withValues(alpha: 0.05),
+        border: Border.all(color: const Color(0xFF0095F6).withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
