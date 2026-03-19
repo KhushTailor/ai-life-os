@@ -199,24 +199,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                _buildSocialButton(
-                  label: 'Continue with Apple',
-                  icon: Icons.apple,
-                  onPressed: () async {
-                    setState(() => _isLoading = true);
-                    try {
-                      final user = await FirebaseService().signInWithApple();
-                      if (user != null) {
-                        widget.onLogin(user.displayName ?? "User");
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign-in failed: $e'), backgroundColor: Colors.redAccent));
-                      }
-                    }
-                    if (mounted) setState(() => _isLoading = false);
-                  },
-                ),
               ],
             ),
           ),

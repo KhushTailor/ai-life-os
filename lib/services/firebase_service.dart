@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'dart:math';
@@ -33,29 +33,7 @@ class FirebaseService {
     }
   }
 
-  // Apple Sign In
-  Future<User?> signInWithApple() async {
-    try {
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
 
-      final OAuthProvider oAuthProvider = OAuthProvider('apple.com');
-      final AuthCredential credential = oAuthProvider.credential(
-        idToken: appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      return userCredential.user;
-    } catch (e) {
-      print("Apple Sign-In Error: $e");
-      return null;
-    }
-  }
 
   // Email/Password Sign Up
   Future<User?> signUpWithEmail(String email, String password, String name) async {
