@@ -12,6 +12,8 @@ import 'screens/habit_screen.dart';
 import 'screens/finance_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/focus_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,7 +116,7 @@ class _LifeOSAppState extends State<LifeOSApp> {
           onLogout: _logout,
         );
       case 1:
-        return ChatScreen(userName: _userName!);
+        return ChatScreen(userName: _userName!, activeTheme: theme);
       case 2:
         return PlannerScreen(uid: _uid!, activeTheme: theme);
       case 3:
@@ -130,7 +132,10 @@ class _LifeOSAppState extends State<LifeOSApp> {
           onCurrencyChanged: _onCurrencyChanged,
           onLogout: _logout,
         );
+      case 6:
+        return FocusScreen(activeTheme: theme);
       default:
+
         return DashboardScreen(
           userName: _userName!,
           uid: _uid!,

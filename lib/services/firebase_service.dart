@@ -2,9 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-import 'dart:math';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -12,6 +11,29 @@ class FirebaseService {
 
   // Stream of User Auth State
   Stream<User?> get user => _auth.authStateChanges();
+
+  // AI Categorization
+  Future<String> getAIExpenseCategory(String description) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedKey = prefs.getString('gemini_api_key');
+      const defaultKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
+      final apiKey = (savedKey != null && savedKey.isNotEmpty) ? savedKey : defaultKey;
+
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      
+      final prompt = 'Categorize this expense description into ONE word from these options: Food, Transport, Shopping, Bills, Entertainment, Health, Other. Description: "$description"';
+      final content = [Content.text(prompt)];
+      final response = await model.generateContent(content);
+      
+      String result = response.text?.trim() ?? 'Other';
+      // Clean up if AI returns more than one word
+      if (result.contains(' ')) result = result.split(' ')[0];
+      return result;
+    } catch (e) {
+      return 'Other';
+    }
+  }
 
   // Google Sign In
   Future<User?> signInWithGoogle() async {

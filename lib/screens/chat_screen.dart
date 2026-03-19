@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:ui';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../theme/glass_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userName;
-  const ChatScreen({super.key, required this.userName});
+  final GlassTheme activeTheme;
+  const ChatScreen({super.key, required this.userName, required this.activeTheme});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -17,6 +21,8 @@ class _ChatScreenState extends State<ChatScreen> {
   late GenerativeModel _model;
   bool _isAIAvailable = false;
   String _errorMessage = '';
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -24,14 +30,18 @@ class _ChatScreenState extends State<ChatScreen> {
     _initAI();
   }
 
-  void _initAI() {
+  Future<void> _initAI() async {
     try {
-      const apiKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
+      final prefs = await SharedPreferences.getInstance();
+      final savedKey = prefs.getString('gemini_api_key');
+      
+      const defaultKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
+      final apiKey = (savedKey != null && savedKey.isNotEmpty) ? savedKey : defaultKey;
       
       if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY') {
         setState(() {
           _isAIAvailable = false;
-          _errorMessage = 'Gemini API Key is missing or invalid.';
+          _errorMessage = 'Gemini API Key is missing or invalid. Please check Settings.';
         });
         return;
       }
@@ -81,6 +91,26 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add({'role': 'ai', 'content': 'Error connecting to AI: \n\nCheck your internet connection or API Key. Details: $e'});
         _isLoading = false;
       });
+    }
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) => print('onStatus: $val'),
+        onError: (val) => print('onError: $val'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _controller.text = val.recognizedWords;
+          }),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
     }
   }
 
@@ -188,6 +218,10 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           onSubmitted: (_) => _sendMessage(),
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(_isListening ? Icons.mic : Icons.mic_none_rounded, color: _isListening ? Colors.redAccent : widget.activeTheme.accentColor),
+                        onPressed: _listen,
                       ),
                       IconButton(
                         icon: const Icon(Icons.send_rounded, color: Color(0xFFBC13FE)),

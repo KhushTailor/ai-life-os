@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/glass_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -25,6 +26,30 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _apiKeyController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApiKey();
+  }
+
+  Future<void> _loadApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _apiKeyController.text = prefs.getString('gemini_api_key') ?? '';
+    });
+  }
+
+  Future<void> _saveApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('gemini_api_key', _apiKeyController.text.trim());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('API Key Saved! Restart AI to apply.'), backgroundColor: Colors.green),
+      );
+    }
+  }
 
   void _showCurrencyPicker() {
     final currencies = [
@@ -75,72 +100,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showNotificationsDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Notifications', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildToggleTile('Daily Reminders', true),
-            _buildToggleTile('Habit Alerts', true),
-            _buildToggleTile('Finance Updates', false),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Done', style: TextStyle(color: Color(0xFFBC13FE))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleTile(String label, bool defaultVal) {
-    return StatefulBuilder(
-      builder: (context, setInnerState) {
-        bool val = defaultVal;
-        return SwitchListTile(
-          title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
-          value: val,
-          activeColor: const Color(0xFFBC13FE),
-          onChanged: (v) => setInnerState(() => val = v),
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-        );
-      },
-    );
-  }
-
-  void _showPrivacyDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Privacy & Security', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('• All data is stored securely in Google Cloud Firestore', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.8)),
-            Text('• No data is shared with third parties', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.8)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Got it', style: TextStyle(color: Color(0xFFBC13FE))),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final curTheme = GlassTheme.themes[widget.activeTheme] ?? GlassTheme.themes['nebula_deep']!;
@@ -148,49 +107,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Customize OS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text('Settings & AI', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: ListView(
         padding: const EdgeInsets.all(20).copyWith(bottom: 120),
         children: [
-          // Profile Card
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: (curTheme.brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: curTheme.accentColor,
-                      child: Text(
-                        widget.userName[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
+          // AI Config Section
+          Text('AI ASSISTANT CONFIG', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          const SizedBox(height: 16),
+          _buildPremiumCard(
+            curTheme: curTheme,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Gemini API Key', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _apiKeyController,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Paste your API Key here',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.save_rounded, color: Colors.greenAccent),
+                      onPressed: _saveApiKey,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(widget.userName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text('Premium Member', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Text(
+                  'Your key is stored locally on this device.',
+                  style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+                ),
+              ],
             ),
           ),
 
@@ -203,13 +158,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 30),
 
-          // General Settings
+          // Preferences
           Text('PREFERENCES', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           const SizedBox(height: 16),
           _buildActionTile(Icons.attach_money_rounded, 'Currency', 'Selected: ${widget.currency}', onTap: _showCurrencyPicker, color: Colors.greenAccent),
-          _buildActionTile(Icons.notifications_active_rounded, 'Notifications', 'Manage alerts', onTap: _showNotificationsDialog, color: Colors.orangeAccent),
-          _buildActionTile(Icons.shield_rounded, 'Privacy', 'Data & security', onTap: _showPrivacyDialog, color: Colors.cyanAccent),
-
+          
           const SizedBox(height: 30),
 
           // Logout Button
@@ -227,12 +180,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
                   SizedBox(width: 10),
-                  Text('Logout', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  Text('Logout Account', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumCard({required GlassTheme curTheme, required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: (curTheme.brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: child,
+        ),
       ),
     );
   }
@@ -256,22 +227,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         child: Row(
           children: [
-            // Mini Background Preview
             Container(
-              width: 50,
-              height: 50,
+              width: 50, height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 gradient: LinearGradient(colors: theme.backgroundGradient),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: Center(
-                child: Icon(
-                  theme.brightness == Brightness.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  size: 16,
-                  color: Colors.white.withOpacity(0.6),
-                ),
-              ),
+              child: Center(child: Icon(theme.brightness == Brightness.dark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 16, color: Colors.white.withOpacity(0.6))),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -279,15 +242,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(theme.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 2),
                   Text(theme.description, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
                 ],
               ),
             ),
-            if (isSelected)
-              Icon(Icons.check_circle_rounded, color: theme.accentColor)
-            else
-              Icon(Icons.radio_button_off_rounded, color: Colors.white.withOpacity(0.2)),
+            if (isSelected) Icon(Icons.check_circle_rounded, color: theme.accentColor) else Icon(Icons.radio_button_off_rounded, color: Colors.white.withOpacity(0.2)),
           ],
         ),
       ),
@@ -309,10 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 16),

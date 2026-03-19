@@ -100,40 +100,47 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _db.streamTasks(widget.uid),
-        builder: (context, snapshot) {
-          final tasks = snapshot.data ?? [];
-          return ListView.builder(
-            padding: const EdgeInsets.all(20).copyWith(bottom: 120),
-            itemCount: tasks.length + 1,
-            itemBuilder: (ctx, i) {
-              if (i == tasks.length) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: FloatingActionButton.extended(
-                      onPressed: () => _addTask(tasks),
-                      backgroundColor: widget.activeTheme.accentColor,
-                      label: const Text('Add Plan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                      icon: const Icon(Icons.add_rounded, color: Colors.white),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamTasks(widget.uid),
+      builder: (context, snapshot) {
+        final tasks = snapshot.data ?? [];
+        final isLoading = snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Planner', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+          ),
+          body: isLoading 
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : tasks.isEmpty 
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_today_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
+                          const SizedBox(height: 16),
+                          Text('No plans for today', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20).copyWith(bottom: 120),
+                      itemCount: tasks.length,
+                      itemBuilder: (ctx, i) {
+                        return _buildGlassTaskTile(tasks[i], i, tasks);
+                      },
                     ),
-                  ),
-                );
-              }
-              final task = tasks[i];
-              return _buildGlassTaskTile(task, i, tasks);
-            },
-          );
-        },
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: isLoading ? null : () => _addTask(tasks),
+            backgroundColor: widget.activeTheme.accentColor,
+            icon: const Icon(Icons.add_rounded, color: Colors.white),
+            label: const Text('New Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        );
+      },
     );
   }
 

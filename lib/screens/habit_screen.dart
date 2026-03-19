@@ -37,13 +37,13 @@ class _HabitScreenState extends State<HabitScreen> {
             children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 20),
-              Text('New Habit', style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('New Artificial Insight Habit', style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               TextField(
                 controller: nameController,
                 style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
-                  hintText: 'Habit Name',
+                  hintText: 'What is your goal?',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: Colors.grey.withOpacity(0.1),
@@ -55,7 +55,7 @@ class _HabitScreenState extends State<HabitScreen> {
                 controller: categoryController,
                 style: TextStyle(color: widget.activeTheme.brightness == Brightness.dark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
-                  hintText: 'Category (Health, Work, etc.)',
+                  hintText: 'Category (e.g. Health, Work)',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
                   fillColor: Colors.grey.withOpacity(0.1),
@@ -80,6 +80,8 @@ class _HabitScreenState extends State<HabitScreen> {
                         'name': name,
                         'category': category,
                         'status': 'todo',
+                        'streak': 0,
+                        'target': 1,
                       });
                       await _db.syncHabits(widget.uid, updatedList);
                     }
@@ -88,7 +90,7 @@ class _HabitScreenState extends State<HabitScreen> {
                     backgroundColor: widget.activeTheme.accentColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  child: const Text('Start Habit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text('Start Evolution', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],
@@ -98,54 +100,88 @@ class _HabitScreenState extends State<HabitScreen> {
     );
   }
 
+  void _evolveHabit(int index, List<Map<String, dynamic>> allHabits) {
+    final habit = allHabits[index];
+    final currentStreak = habit['streak'] ?? 0;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Habit Evolution! 🔥', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Your ${habit['name']} streak is $currentStreak! \n\nAI suggests increasing your difficulty level for faster growth.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Not Yet', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () {
+              final updated = List<Map<String, dynamic>>.from(allHabits);
+              updated[index]['name'] = '${habit['name']} (LVL UP)';
+              updated[index]['streak'] = 0;
+              _db.syncHabits(widget.uid, updated);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: widget.activeTheme.accentColor),
+            child: const Text('EVOLVE'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Habits', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _db.streamHabits(widget.uid),
-        builder: (context, snapshot) {
-          final habits = snapshot.data ?? [];
-          return ListView.builder(
-            padding: const EdgeInsets.all(20).copyWith(bottom: 120),
-            itemCount: habits.length + 1,
-            itemBuilder: (ctx, i) {
-              if (i == habits.length) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: IconButton(
-                      onPressed: () => _addHabit(habits),
-                      icon: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: widget.activeTheme.accentColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: widget.activeTheme.accentColor.withOpacity(0.35), blurRadius: 15)],
-                        ),
-                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamHabits(widget.uid),
+      builder: (context, snapshot) {
+        final habits = snapshot.data ?? [];
+        final isLoading = snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData;
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text('Habit Evolution', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+          ),
+          body: isLoading 
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : habits.isEmpty 
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.track_changes_rounded, size: 64, color: Colors.white.withOpacity(0.2)),
+                          const SizedBox(height: 16),
+                          Text('No habits tracked yet', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 16)),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20).copyWith(bottom: 120),
+                      itemCount: habits.length,
+                      itemBuilder: (ctx, i) {
+                        return _buildGlassHabitCard(habits[i], i, habits);
+                      },
                     ),
-                  ),
-                );
-              }
-              final habit = habits[i];
-              return _buildGlassHabitCard(habit, i, habits);
-            },
-          );
-        },
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: isLoading ? null : () => _addHabit(habits),
+            backgroundColor: widget.activeTheme.accentColor,
+            icon: const Icon(Icons.add_rounded, color: Colors.white),
+            label: const Text('New Habit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildGlassHabitCard(Map<String, dynamic> habit, int index, List<Map<String, dynamic>> allHabits) {
     final status = habit['status'] ?? 'todo';
     final isDone = status == 'done';
+    final streak = habit['streak'] ?? 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -160,42 +196,77 @@ class _HabitScreenState extends State<HabitScreen> {
               borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
               border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
-            child: Row(
+            child: Column(
               children: [
-                GestureDetector(
-                  onTap: () {
-                    final updated = List<Map<String, dynamic>>.from(allHabits);
-                    updated[index]['status'] = isDone ? 'todo' : 'done';
-                    _db.syncHabits(widget.uid, updated);
-                  },
-                  child: Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(
-                      color: isDone ? Colors.greenAccent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: isDone ? Colors.greenAccent : widget.activeTheme.accentColor, width: 2),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        final updated = List<Map<String, dynamic>>.from(allHabits);
+                        if (!isDone) {
+                          updated[index]['status'] = 'done';
+                          updated[index]['streak'] = streak + 1;
+                        } else {
+                          updated[index]['status'] = 'todo';
+                          updated[index]['streak'] = streak > 0 ? streak - 1 : 0;
+                        }
+                        _db.syncHabits(widget.uid, updated);
+                        
+                        if (!isDone && (streak + 1) >= 7) {
+                          _evolveHabit(index, updated);
+                        }
+                      },
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: isDone ? Colors.greenAccent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: isDone ? Colors.greenAccent : widget.activeTheme.accentColor, width: 2),
+                        ),
+                        child: isDone ? const Icon(Icons.check, color: Colors.greenAccent, size: 20) : null,
+                      ),
                     ),
-                    child: isDone ? const Icon(Icons.check, color: Colors.greenAccent, size: 20) : null,
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(habit['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(habit['category'], style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, letterSpacing: 0.5)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Text('$streak', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 18)),
+                        const Text('DAY STREAK', style: TextStyle(color: Colors.orangeAccent, fontSize: 7, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+                if (streak >= 5)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Container(
+                      height: 4,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: (streak / 7 > 1 ? 1 : streak / 7),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent,
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: [BoxShadow(color: Colors.orangeAccent.withOpacity(0.5), blurRadius: 4)],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(habit['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(habit['category'], style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, letterSpacing: 0.5)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete_forever_rounded, color: Colors.redAccent.withOpacity(0.4), size: 22),
-                  onPressed: () {
-                    final updated = List<Map<String, dynamic>>.from(allHabits);
-                    updated.removeAt(index);
-                    _db.syncHabits(widget.uid, updated);
-                  },
-                ),
               ],
             ),
           ),

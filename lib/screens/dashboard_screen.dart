@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:fl_chart/fl_chart.dart';
 import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
 
@@ -62,11 +63,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final finance = financeSnap.data ?? [];
 
                     final tasksDone = tasks.where((t) => t['completed'] == true).length;
-                    
                     final streak = habits.isNotEmpty ? 1 : 0; 
                     
-                    final totalIncome = finance.where((tx) => tx['amount'] > 0).fold(0.0, (sum, tx) => sum + tx['amount']);
-                    final totalExpenses = finance.where((tx) => tx['amount'] < 0).fold(0.0, (sum, tx) => sum + tx['amount'].abs());
+                    final totalIncome = finance.where((tx) => (tx['amount'] ?? 0) > 0).fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0));
+                    final totalExpenses = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0).abs());
                     final saved = totalIncome - totalExpenses;
 
                     return SingleChildScrollView(
@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header Row
+                          // Header 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -82,20 +82,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${_getGreeting()},',
-                                      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6)),
-                                    ),
+                                    Text('${_getGreeting()},', style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.6))),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      widget.userName,
-                                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-                                    ),
+                                    Text(widget.userName, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
                                   ],
                                 ),
                               ),
                               GestureDetector(
-                                onTap: () => widget.onNavigate(5), // Settings
+                                onTap: () => widget.onNavigate(5),
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
@@ -113,6 +107,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                           const SizedBox(height: 28),
 
+                          // Lifecycle Report Chart (Visual Upgrade)
+                          Text('LIFECYCLE OVERVIEW', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                          const SizedBox(height: 16),
+                          _buildPremiumCard(
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 180,
+                                  child: PieChart(
+                                    PieChartData(
+                                      sectionsSpace: 4,
+                                      centerSpaceRadius: 40,
+                                      sections: _buildChartSections(finance),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildLegendItem('Spending', Colors.redAccent),
+                                    const SizedBox(width: 20),
+                                    _buildLegendItem('Saving', Colors.greenAccent),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+
                           // Stats Grid
                           GridView.count(
                             shrinkWrap: true,
@@ -129,9 +154,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 32),
 
-                          // AI Insight Card
+                          // AI Brain Quick Input
                           _buildPremiumCard(
                             child: Row(
                               children: [
@@ -141,80 +166,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: widget.activeTheme.accentColor.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Icon(Icons.auto_awesome, color: widget.activeTheme.accentColor, size: 24),
+                                  child: Icon(Icons.psychology_rounded, color: widget.activeTheme.accentColor, size: 24),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('AI Insight', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        tasks.isEmpty && habits.isEmpty
-                                            ? 'Add tasks to get personalized AI insights.'
-                                            : 'You have ${tasks.length} objectives today.',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                      ),
+                                      const Text('AI Focus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Text('Ready for a deep work session?', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
                                     ],
                                   ),
+                                ),
+                                TextButton(
+                                  onPressed: () => widget.onNavigate(6), // Focus Screen
+                                  child: Text('EXPLORE', style: TextStyle(color: widget.activeTheme.accentColor, fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ],
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 32),
 
                           // Quick Actions
-                          Text('Quick Actions', style: TextStyle(color: Colors.white.withOpacity(0.5), fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.5)),
-                          const SizedBox(height: 12),
                           Row(
                             children: [
-                              Expanded(child: _buildQuickAction('AI Chat', Icons.auto_awesome, widget.activeTheme.accentColor, 1)),
+                              Expanded(child: _buildQuickAction('AI AI', Icons.auto_awesome, widget.activeTheme.accentColor, 1)),
                               const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Planner', Icons.calendar_today_rounded, Colors.cyanAccent, 2)),
+                              Expanded(child: _buildQuickAction('Plan', Icons.calendar_today_rounded, Colors.cyanAccent, 2)),
                               const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Habits', Icons.track_changes_rounded, Colors.greenAccent, 3)),
-                              const SizedBox(width: 12),
-                              Expanded(child: _buildQuickAction('Finance', Icons.account_balance_wallet_rounded, Colors.orangeAccent, 4)),
+                              Expanded(child: _buildQuickAction('Deep', Icons.track_changes_rounded, Colors.greenAccent, 3)),
                             ],
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Daily Objectives
-                          _buildPremiumCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Daily Objectives', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 20),
-                                if (tasks.isEmpty)
-                                  Center(
-                                    child: Text('No objectives for today', style: TextStyle(color: Colors.white.withOpacity(0.3))),
-                                  )
-                                else
-                                  ...tasks.take(3).map((task) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          task['completed'] ? Icons.check_circle : Icons.radio_button_unchecked, 
-                                          color: task['completed'] ? Colors.greenAccent : widget.activeTheme.accentColor,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          task['title'], 
-                                          style: TextStyle(
-                                            color: Colors.white, 
-                                            decoration: task['completed'] ? TextDecoration.lineThrough : null
-                                          )
-                                        ),
-                                      ],
-                                    ),
-                                  )),
-                              ],
-                            ),
                           ),
                         ],
                       ),
@@ -226,6 +208,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         ),
       ),
+    );
+  }
+
+  List<PieChartSectionData> _buildChartSections(List<Map<String, dynamic>> finance) {
+    final expenses = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (s, t) => s + (t['amount'] ?? 0).abs());
+    final income = finance.where((tx) => (tx['amount'] ?? 0) > 0).fold(0.0, (s, t) => s + (t['amount'] ?? 0));
+    
+    if (expenses == 0 && income == 0) {
+      return [
+        PieChartSectionData(color: Colors.grey.withOpacity(0.2), value: 1, radius: 20, title: ''),
+      ];
+    }
+
+    return [
+      PieChartSectionData(
+        color: Colors.redAccent.withOpacity(0.6),
+        value: expenses,
+        radius: 25,
+        title: '',
+        badgeWidget: const Icon(Icons.trending_down, color: Colors.white, size: 14),
+        badgePositionPercentageOffset: 1.3,
+      ),
+      PieChartSectionData(
+        color: Colors.greenAccent.withOpacity(0.6),
+        value: income,
+        radius: 25,
+        title: '',
+        badgeWidget: const Icon(Icons.trending_up, color: Colors.white, size: 14),
+        badgePositionPercentageOffset: 1.3,
+      ),
+    ];
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+      ],
     );
   }
 
