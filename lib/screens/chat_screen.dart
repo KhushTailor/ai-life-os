@@ -40,20 +40,24 @@ class _ChatScreenState extends State<ChatScreen> {
       final prefs = await SharedPreferences.getInstance();
       final savedKey = prefs.getString('gemini_api_key');
       
-      const defaultKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
-      final apiKey = (savedKey != null && savedKey.isNotEmpty) ? savedKey : defaultKey;
+      const hardcodedDefaultKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
+      final apiKey = (savedKey != null && savedKey.isNotEmpty) ? savedKey : hardcodedDefaultKey;
       
       if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY') {
         setState(() {
           _isAIAvailable = false;
-          _errorMessage = 'Gemini API Key is missing or invalid. Please check Settings.';
+          _errorMessage = 'Gemini API Key is missing. Please check Settings.';
         });
         return;
       }
 
       _model = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash', 
         apiKey: apiKey,
+        safetySettings: [
+          SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium),
+          SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
+        ],
       );
       
       setState(() {
@@ -92,8 +96,14 @@ class _ChatScreenState extends State<ChatScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      String cleanError = e.toString().contains('403') 
+          ? 'Error: Access Forbidden. Check if your API key has "Generative Language API" enabled.'
+          : e.toString().contains('429')
+          ? 'Error: Quota Exceeded. Please try again later.'
+          : 'Error connecting to AI: $e';
+          
       setState(() {
-        _messages.add({'role': 'ai', 'content': 'Error connecting to AI: \n\nCheck your internet connection or API Key. Details: $e'});
+        _messages.add({'role': 'ai', 'content': cleanError});
         _isLoading = false;
       });
     }

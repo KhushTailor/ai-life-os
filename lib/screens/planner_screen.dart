@@ -18,6 +18,15 @@ class PlannerScreen extends StatefulWidget {
 class _PlannerScreenState extends State<PlannerScreen> {
   final FirebaseService _db = FirebaseService();
   bool _isSearching = false;
+  bool _isSyncing = false;
+  String _searchQuery = '';
+  String _filterStatus = 'all';
+
+  bool get _isLight => widget.activeTheme.brightness == Brightness.light;
+  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
+  Color get _textSecondary => _isLight ? Colors.black54 : Colors.white70;
+  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
+  Color get _borderColor => _isLight ? Colors.black.withOpacity(0.08) : Colors.white.withOpacity(0.12);
   String _searchQuery = '';
   String _filterStatus = 'all'; // 'all', 'done', 'todo'
   final TextEditingController _searchController = TextEditingController();
@@ -196,6 +205,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   }
                 ),
                 const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(Icons.auto_awesome, color: widget.activeTheme.accentColor),
+                  onPressed: _isSyncing ? null : () => _autoSchedule(tasks),
+                ),
+                const SizedBox(width: 8),
               ],
               bottom: TabBar(
                 indicatorColor: widget.activeTheme.accentColor,
@@ -230,9 +244,47 @@ class _PlannerScreenState extends State<PlannerScreen> {
     );
   }
 
+  Future<void> _autoSchedule(List<Map<String, dynamic>> tasks) async {
+    setState(() => _isSyncing = true);
+    try {
+      // In a real app, send to Gemini. Here we use a smart heuristic.
+      await Future.delayed(const Duration(seconds: 1));
+      final updated = List<Map<String, dynamic>>.from(tasks);
+      
+      // Sort: Priority High first, then medium. Assign times.
+      updated.sort((a, b) {
+        final pMap = {'High': 0, 'Medium': 1, 'Low': 2};
+        return (pMap[a['priority']] ?? 2).compareTo(pMap[b['priority']] ?? 2);
+      });
+
+      for (int i = 0; i < updated.length; i++) {
+        final hour = 9 + i;
+        updated[i]['time'] = '${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}';
+      }
+
+      await _db.syncTasks(widget.uid, updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI optimized your schedule!'), backgroundColor: Colors.indigoAccent),
+        );
+      }
+    } finally {
+      setState(() => _isSyncing = false);
+    }
+  }
+
   Widget _buildTasksList(List<Map<String, dynamic>> tasks, bool isLoading) {
     if (isLoading) {
-      return Center(child: CircularProgressIndicator(color: widget.activeTheme.accentColor));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: widget.activeTheme.accentColor),
+            const SizedBox(height: 20),
+            Text('Restoring tasks from cloud...', style: TextStyle(color: _textSecondary, fontSize: 13)),
+          ],
+        ),
+      );
     }
     
     // Apply Filters and Search

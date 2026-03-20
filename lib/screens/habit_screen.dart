@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'dart:ui';
 import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
@@ -249,7 +250,16 @@ class _HabitScreenState extends State<HabitScreen> {
 
   Widget _buildBody(List<Map<String, dynamic>> habits, bool isLoading) {
     if (isLoading) {
-      return Center(child: CircularProgressIndicator(color: widget.activeTheme.accentColor));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: widget.activeTheme.accentColor),
+            const SizedBox(height: 20),
+            Text('Restoring habits from cloud...', style: TextStyle(color: _textSecondary, fontSize: 13)),
+          ],
+        ),
+      );
     }
     
     var filtered = habits.where((h) {
@@ -296,13 +306,60 @@ class _HabitScreenState extends State<HabitScreen> {
       );
     }
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(20).copyWith(bottom: 180),
-      itemCount: filtered.length,
-      itemBuilder: (ctx, i) {
-        final originalIndex = habits.indexOf(filtered[i]);
-        return _buildGlassHabitCard(filtered[i], originalIndex, habits);
-      },
+      children: [
+        _buildHabitSummaryChart(habits),
+        const SizedBox(height: 24),
+        ...filtered.asMap().entries.map((e) {
+          final originalIndex = habits.indexOf(e.value);
+          return _buildGlassHabitCard(e.value, originalIndex, habits);
+        }),
+      ],
+    );
+  }
+
+  Widget _buildHabitSummaryChart(List<Map<String, dynamic>> habits) {
+    if (habits.isEmpty) return const SizedBox.shrink();
+    
+    return Container(
+      height: 120,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('HABIT CONSISTENCY', style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 2)),
+          const SizedBox(height: 15),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: habits.asMap().entries.map((e) => FlSpot(e.key.toDouble(), (e.value['streak'] as int? ?? 0).toDouble())).toList(),
+                    isCurved: true,
+                    color: widget.activeTheme.accentColor,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: widget.activeTheme.accentColor.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

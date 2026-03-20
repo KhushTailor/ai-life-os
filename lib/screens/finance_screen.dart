@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'dart:ui';
 import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
@@ -258,6 +259,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   }
                 ),
                 const SizedBox(width: 8),
+                const SizedBox(width: 8),
               ],
           ),
           body: _buildBody(txs, isLoading),
@@ -277,7 +279,16 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Widget _buildBody(List<Map<String, dynamic>> txs, bool isLoading) {
     if (isLoading) {
-      return Center(child: CircularProgressIndicator(color: widget.activeTheme.accentColor));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: widget.activeTheme.accentColor),
+            const SizedBox(height: 20),
+            Text('Restoring finances from cloud...', style: TextStyle(color: _textSecondary, fontSize: 13)),
+          ],
+        ),
+      );
     }
 
     final income = txs.where((tx) => (tx['amount'] ?? 0) > 0).fold(0.0, (s, t) => s + (t['amount'] ?? 0));
@@ -312,6 +323,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        _buildSpendingChart(txs),
         const SizedBox(height: 24),
         Text('AI CATEGORIES', style: TextStyle(color: _textSecondary, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
         const SizedBox(height: 12),
@@ -425,5 +438,56 @@ class _FinanceScreenState extends State<FinanceScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSpendingChart(List<Map<String, dynamic>> txs) {
+    Map<String, double> categories = {};
+    for (var tx in txs) {
+      if ((tx['amount'] ?? 0) < 0) {
+        String cat = tx['category'] ?? 'Other';
+        categories[cat] = (categories[cat] ?? 0) + (tx['amount'] as double).abs();
+      }
+    }
+    
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('SPENDING BREAKDOWN', style: TextStyle(color: _textSecondary, fontSize: 10, letterSpacing: 2)),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 150,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 4,
+                centerSpaceRadius: 30,
+                sections: categories.entries.map((e) {
+                  return PieChartSectionData(
+                    color: _getCategoryColor(e.key),
+                    value: e.value,
+                    radius: 12,
+                    showTitle: false,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Food': return Colors.orangeAccent;
+      case 'Transport': return Colors.blueAccent;
+      case 'Shopping': return Colors.purpleAccent;
+      case 'Bills': return Colors.redAccent;
+      case 'Entertainment': return Colors.greenAccent;
+      case 'Health': return Colors.cyanAccent;
+      default: return Colors.grey;
+    }
   }
 }

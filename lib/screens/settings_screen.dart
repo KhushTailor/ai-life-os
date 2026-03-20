@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -49,10 +51,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveApiKey() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('gemini_api_key', _apiKeyController.text.trim());
+    final key = _apiKeyController.text.trim();
+    await prefs.setString('gemini_api_key', key);
+    
+    // Sync to Firestore for restoration
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseService().syncProfile(user.uid, {'gemini_api_key': key});
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API Key Saved! Restart AI to apply.'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('API Key Saved & Synced!'), backgroundColor: Colors.green),
       );
     }
   }

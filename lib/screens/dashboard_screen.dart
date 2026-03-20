@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
+import '../widgets/search_delegate.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -76,9 +77,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final totalExpenses = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (sum, tx) => sum + (tx['amount'] ?? 0).abs());
                     final saved = totalIncome - totalExpenses;
 
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(20).copyWith(bottom: 120),
-                      child: Column(
+                    final isLight = widget.activeTheme.isLight;
+                    final textPrimary = widget.activeTheme.textPrimary;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with Search
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('AI LIFE OS', style: TextStyle(color: isLight ? Colors.black54 : Colors.white54, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  Text(widget.userName.toUpperCase(), style: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.search_rounded, color: textPrimary),
+                                onPressed: () {
+                                  showSearch(
+                                    context: context,
+                                    delegate: GlobalSearchDelegate(uid: widget.uid, theme: widget.activeTheme),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20).copyWith(bottom: 120),
+                            child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Top Header
@@ -115,6 +150,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Expanded(child: _buildActionButton('AI Chat', Icons.auto_awesome_rounded, widget.activeTheme.accentColor, 1)),
                               const SizedBox(width: 12),
                               Expanded(child: _buildActionButton('Focus', Icons.timer_rounded, Colors.orangeAccent, 6)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _buildActionButton('Insights', Icons.auto_graph_rounded, Colors.greenAccent, 7)),
                               const SizedBox(width: 12),
                               Expanded(child: _buildActionButton('Tasks', Icons.add_task_rounded, Colors.cyanAccent, 2)),
                             ],
@@ -154,16 +191,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Expanded(child: _buildStatCard('Habit Streak', '${habits.isNotEmpty ? 1 : 0} Days', Icons.local_fire_department_rounded, Colors.orangeAccent)),
                             ],
                           ),
-                        ],
+                          ],
+                        ),
                       ),
-                    );
-                  }
+                    ),
+                  ],
                 );
-              }
+              },
             );
-          }
-        ),
-      ),
+          },
+        );
+      },
     );
   }
 

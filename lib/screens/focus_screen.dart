@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:ui';
 import '../theme/glass_theme.dart';
+import 'zen_screen.dart';
 
 class FocusScreen extends StatefulWidget {
   final GlassTheme activeTheme;
@@ -131,6 +132,22 @@ class _FocusScreenState extends State<FocusScreen> {
               ],
             ),
             
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ZenScreen(theme: widget.activeTheme)),
+                );
+              },
+              icon: const Icon(Icons.self_improvement_rounded, color: Colors.white),
+              label: const Text('GO ZEN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withOpacity(0.1))),
+              ),
+            ),
             const SizedBox(height: 40),
             TextButton(
               onPressed: () => Navigator.pop(context),

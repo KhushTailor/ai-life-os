@@ -29,7 +29,16 @@ class FirebaseService {
       const defaultKey = 'AIzaSyAYfXmUGpvbzT5k_NFPaDOmsm9-WJsjebo';
       final apiKey = (savedKey != null && savedKey.isNotEmpty) ? savedKey : defaultKey;
 
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      if (apiKey.isEmpty || apiKey == 'YOUR_GEMINI_API_KEY') return 'Other';
+
+      final model = GenerativeModel(
+        model: 'gemini-1.5-flash', 
+        apiKey: apiKey,
+        safetySettings: [
+          SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium),
+          SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
+        ],
+      );
       
       final prompt = 'Categorize this expense description into ONE word from these options: Food, Transport, Shopping, Bills, Entertainment, Health, Other. Description: "$description"';
       final content = [Content.text(prompt)];
@@ -107,6 +116,11 @@ class FirebaseService {
       // Ignore google sign out errors if not signed in via google
     }
     await _auth.signOut();
+  }
+
+  // Sync Profile Settings to Firestore
+  Future<void> syncProfile(String uid, Map<String, dynamic> settings) async {
+    await _db.collection('users').doc(uid).set(settings, SetOptions(merge: true));
   }
 
   // Sync Data to Firestore

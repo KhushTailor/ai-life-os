@@ -13,7 +13,11 @@ import 'screens/finance_screen.dart';
 import 'screens/planner_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/focus_screen.dart';
+import 'screens/insights_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'widgets/voice_assistant_overlay.dart';
+import 'services/voice_service.dart';
 
 
 void main() async {
@@ -57,21 +61,83 @@ class _LifeOSAppState extends State<LifeOSApp> {
   int _selectedIndex = 0;
   String _activeThemeKey = 'nebula_deep';
   String _currency = '\$';
+  bool _isLoading = true;
+  bool _isFirstTime = false;
 
   @override
   void initState() {
     super.initState();
+    _checkFirstTime();
     _checkAuth();
     _loadPreferences();
   }
 
+  Future<void> _checkFirstTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isFirstTime = prefs.getBool('first_time') ?? true;
+    });
+  }
+
+  void _onOnboardingFinished() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('first_time', false);
+    setState(() => _isFirstTime = false);
+  }
+
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // Initial fetch from SharedPreferences
+    String? localTheme = prefs.getString('theme');
+    String? localCurrency = prefs.getString('currency');
+
     if (mounted) {
       setState(() {
-        _activeThemeKey = prefs.getString('theme') ?? 'nebula_deep';
-        _currency = prefs.getString('currency') ?? '\$';
+        _activeThemeKey = localTheme ?? 'nebula_deep';
+        _currency = localCurrency ?? '\$';
       });
+    }
+
+    // If logged in but local prefs are missing, try to restore from Firestore
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && (localTheme == null || localCurrency == null)) {
+      _restoreSettingsFromFirestore(user.uid);
+    }
+  }
+
+  Future<void> _restoreSettingsFromFirestore(String uid) async {
+    try {
+      final userData = await FirebaseService().getUserData(uid);
+      if (userData != null) {
+        final prefs = await SharedPreferences.getInstance();
+        
+        String? cloudTheme = userData['theme'];
+        String? cloudCurrency = userData['currency'];
+        String? cloudName = userData['name'];
+        String? cloudApiKey = userData['gemini_api_key'];
+
+        if (mounted) {
+          setState(() {
+            if (cloudTheme != null) {
+              _activeThemeKey = cloudTheme;
+              prefs.setString('theme', cloudTheme);
+            }
+            if (cloudCurrency != null) {
+              _currency = cloudCurrency;
+              prefs.setString('currency', cloudCurrency);
+            }
+            if (cloudName != null) {
+              _userName = cloudName;
+            }
+            if (cloudApiKey != null) {
+              prefs.setString('gemini_api_key', cloudApiKey);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error restoring settings: $e");
     }
   }
 
@@ -93,6 +159,10 @@ class _LifeOSAppState extends State<LifeOSApp> {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('theme', themeKey);
+    
+    if (_uid != null) {
+      await FirebaseService().syncProfile(_uid!, {'theme': themeKey});
+    }
   }
 
   void _onCurrencyChanged(String symbol) async {
@@ -101,6 +171,10 @@ class _LifeOSAppState extends State<LifeOSApp> {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('currency', symbol);
+
+    if (_uid != null) {
+      await FirebaseService().syncProfile(_uid!, {'currency': symbol});
+    }
   }
 
   Future<void> _logout() async {
@@ -108,10 +182,98 @@ class _LifeOSAppState extends State<LifeOSApp> {
     setState(() { _userName = null; _uid = null; });
   }
 
+  void _handleVoiceCommand(VoiceCommand command) async {
+    if (_uid == null) return;
+
+    switch (command.intent) {
+      case VoiceIntent.navigate:
+        if (command.payload != null) {
+          int index = int.parse(command.payload!);
+          setState(() => _selectedIndex = index);
+        }
+        break;
+      case VoiceIntent.changeTheme:
+        if (command.payload != null) {
+          _onThemeChanged(command.payload!);
+        }
+        break;
+      case VoiceIntent.addTask:
+        if (command.payload != null && command.payload!.isNotEmpty) {
+          final tasks = await FirebaseService().streamTasks(_uid!).first;
+          final updated = List<Map<String, dynamic>>.from(tasks);
+          updated.add({'title': command.payload, 'completed': false, 'time': 'Anytime'});
+          await FirebaseService().syncTasks(_uid!, updated);
+          _showToast('Task added: ${command.payload}');
+        }
+        break;
+      case VoiceIntent.addHabit:
+        if (command.payload != null && command.payload!.isNotEmpty) {
+          final habits = await FirebaseService().streamHabits(_uid!).first;
+          final updated = List<Map<String, dynamic>>.from(habits);
+          updated.add({'name': command.payload, 'category': 'General', 'status': 'todo', 'streak': 0});
+          await FirebaseService().syncHabits(_uid!, updated);
+          _showToast('Habit started: ${command.payload}');
+        }
+        break;
+      case VoiceIntent.addExpense:
+        if (command.data != null) {
+          final finance = await FirebaseService().streamFinance(_uid!).first;
+          final updated = List<Map<String, dynamic>>.from(finance);
+          updated.add({
+            'title': command.data!['title'] ?? 'Voice Expense',
+            'amount': command.data!['amount'],
+            'date': 'Today',
+            'category': 'Other'
+          });
+          await FirebaseService().syncFinance(_uid!, updated);
+          _showToast('Expense logged: ${command.data!['amount']}');
+        }
+        break;
+      case VoiceIntent.startFocus:
+        setState(() => _selectedIndex = 6);
+        _showToast('Focus session started for ${command.payload ?? 25} minutes.');
+        break;
+      case VoiceIntent.askAI:
+        setState(() => _selectedIndex = 1); // Go to AI Chat
+        _showToast('Asking AI...');
+        break;
+      case VoiceIntent.queryData:
+        if (command.payload == 'tasks') {
+          final tasks = await FirebaseService().streamTasks(_uid!).first;
+          final count = tasks.where((t) => t['completed'] == false).length;
+          _showToast('You have $count pending tasks.');
+        } else if (command.payload == 'finance') {
+          final finance = await FirebaseService().streamFinance(_uid!).first;
+          final total = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (s, t) => s + (t['amount'] as double).abs());
+          _showToast('Total expenses: \$${total.toStringAsFixed(2)}');
+        }
+        break;
+      case VoiceIntent.unknown:
+        _showToast('Command not recognized: ${command.payload}');
+        break;
+    }
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.black.withOpacity(0.8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   Widget _buildCurrentScreen(GlassTheme theme) {
+    if (_isFirstTime) {
+      return OnboardingScreen(onFinished: _onOnboardingFinished);
+    }
+
     if (_userName == null || _uid == null) {
       return AuthScreen(
-        onLogin: (name) {
+        onLogin: (name) async {
           final user = FirebaseAuth.instance.currentUser;
           if (user != null) {
             setState(() {
@@ -119,6 +281,9 @@ class _LifeOSAppState extends State<LifeOSApp> {
               _uid = user.uid;
               _selectedIndex = 0;
             });
+            // Immediately sync name and restore rest
+            await FirebaseService().syncProfile(user.uid, {'name': name});
+            await _restoreSettingsFromFirestore(user.uid);
           }
         },
       );
@@ -153,6 +318,8 @@ class _LifeOSAppState extends State<LifeOSApp> {
         );
       case 6:
         return FocusScreen(activeTheme: theme);
+      case 7:
+        return InsightsScreen(uid: _uid!, theme: theme);
       default:
 
         return DashboardScreen(
@@ -202,6 +369,11 @@ class _LifeOSAppState extends State<LifeOSApp> {
                   right: 0,
                   bottom: 0,
                   child: _buildFloatingNavBar(theme),
+                ),
+              if (_userName != null)
+                VoiceAssistantOverlay(
+                  theme: theme,
+                  onCommand: _handleVoiceCommand,
                 ),
             ],
           ),

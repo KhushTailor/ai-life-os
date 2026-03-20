@@ -25,6 +25,11 @@ class GlassTheme {
     this.brightness = Brightness.dark,
   });
 
+  bool get isLight => brightness == Brightness.light;
+  Color get textPrimary => isLight ? Colors.black87 : Colors.white;
+  Color get textSecondary => isLight ? Colors.black54 : Colors.white70;
+  Color get textTertiary => isLight ? Colors.black38 : Colors.white54;
+
   static Map<String, GlassTheme> themes = {
     'nebula_deep': GlassTheme(
       key: 'nebula_deep',
