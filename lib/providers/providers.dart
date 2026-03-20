@@ -7,8 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 // Services
+final apiBaseUrlProvider = Provider((ref) => 'http://localhost:5000'); // CHANGE THIS FOR PRODUCTION
 final firebaseServiceProvider = Provider((ref) => FirebaseService());
-final aiServiceProvider = Provider((ref) => AIService());
+final aiServiceProvider = Provider((ref) {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  return AIService(baseUrl: baseUrl);
+});
 
 // Auth State
 final authStateProvider = StreamProvider<User?>((ref) {

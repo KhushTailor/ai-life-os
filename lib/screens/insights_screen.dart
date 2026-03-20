@@ -16,9 +16,13 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
   bool _isLoadingAI = false;
   String _aiAnalysis = 'Tap the button to generate your weekly AI performance analysis.';
   double _lifeScore = 78.0;
+  double _healthScore = 82.0;
+  String _financeTrend = 'Analyzing...';
+  String _healthTrend = 'Analyzing...';
 
   Future<void> _generateInsights() async {
     setState(() => _isLoadingAI = true);
+    debugPrint("GENERATING AI INSIGHTS...");
     
     try {
       final habits = ref.read(habitsProvider).value ?? [];
@@ -28,36 +32,48 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       final aiService = ref.read(aiServiceProvider);
       
       final prompt = """
-      Analyze my performance based on the following data:
-      Habits: ${habits.map((h) => "${h['name']}: ${h['streak']} day streak, status: ${h['status']}").join(', ')}
+      Analyze my performance based on this raw data:
+      Habits: ${habits.map((h) => "${h['name']}: ${h['streak']} streak, ${h['status']}").join(', ')}
       Finance: ${finance.length} transactions, total volume: ${finance.fold(0.0, (s, t) => s + (t['amount'] as num).abs())}
-      Tasks: ${tasks.where((t) => t['completed'] == true).length} completed out of ${tasks.length} total.
-      
-      Provide a 'Life Score' (0-100) and a concise summary of my performance and 3 actionable recommendations.
-      Format: SCORE: [number] | ANALYSIS: [text]
+      Tasks: ${tasks.where((t) => t['completed'] == true).length} / ${tasks.length} done.
+
+      Provide 4 specific findings:
+      1. Life Score (0-100)
+      2. Health Score (0-100 based on habits)
+      3. Financial Trend (forecast vs current spend)
+      4. Detailed Analysis with 3 actionable tips.
+
+      Format strictly as:
+      LIFE_SCORE: [number] | HEALTH_SCORE: [number] | FINANCE_TREND: [text] | HEALTH_TREND: [text] | ANALYSIS: [text]
       """;
 
       final response = await aiService.getChatResponse(prompt);
+      debugPrint("AI INSIGHT RESPONSE: $response");
       
-      // Basic parsing of SCORE: XX | ANALYSIS: ...
-      double score = 75.0;
+      double lifeScore = 75.0;
+      double healthScore = 80.0;
+      String fTrend = 'Stable';
+      String hTrend = 'Consistency is good.';
       String analysis = response;
 
-      if (response.contains('SCORE:')) {
+      try {
         final parts = response.split('|');
-        final scorePart = parts[0].replaceAll('SCORE:', '').trim();
-        score = double.tryParse(scorePart) ?? 75.0;
-        if (parts.length > 1) {
-          analysis = parts[1].replaceAll('ANALYSIS:', '').trim();
+        for (var part in parts) {
+           final entry = part.toUpperCase();
+           if (entry.contains('LIFE_SCORE:')) _lifeScore = double.tryParse(part.split(':')[1].trim()) ?? 75.0;
+           if (entry.contains('HEALTH_SCORE:')) _healthScore = double.tryParse(part.split(':')[1].trim()) ?? 80.0;
+           if (entry.contains('FINANCE_TREND:')) _financeTrend = part.split(':')[1].trim();
+           if (entry.contains('HEALTH_TREND:')) _healthTrend = part.split(':')[1].trim();
+           if (entry.contains('ANALYSIS:')) _aiAnalysis = part.split(':')[1].trim();
         }
+      } catch (e) {
+        debugPrint("PARSING ERROR: $e");
+        _aiAnalysis = response; // Fallback to raw response if parsing fails
       }
 
-      setState(() {
-        _lifeScore = score;
-        _aiAnalysis = analysis;
-      });
+      setState(() {});
     } catch (e) {
-      if (mounted) setState(() => _aiAnalysis = "Error analyzing your life data: $e");
+      if (mounted) setState(() => _aiAnalysis = "Error: $e");
     } finally {
       if (mounted) setState(() => _isLoadingAI = false);
     }
@@ -152,10 +168,55 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             // Quick Stats
             Row(
               children: [
-                Expanded(child: _buildSmallCard(theme, isLight, 'Efficiency', '92%', Icons.trending_up_rounded)),
+                Expanded(child: _buildSmallCard(theme, isLight, 'Efficiency', '${(_lifeScore * 1.1).toInt().clamp(0, 100)}%', Icons.trending_up_rounded)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildSmallCard(theme, isLight, 'Consistency', '84%', Icons.check_circle_rounded)),
+                Expanded(child: _buildSmallCard(theme, isLight, 'Consistency', '${_healthScore.toInt()}%', Icons.check_circle_rounded)),
               ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Forecast Section
+            _buildInsightCard(
+              isLight: isLight,
+              child: Row(
+                children: [
+                  Icon(Icons.timeline_rounded, color: theme.accentColor, size: 30),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('FINANCIAL OUTLOOK', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text(_financeTrend, style: TextStyle(color: textPrimary.withValues(alpha: 0.6), fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            _buildInsightCard(
+              isLight: isLight,
+              child: Row(
+                children: [
+                  Icon(Icons.spa_rounded, color: Colors.greenAccent, size: 30),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('HEALTH TRENDS', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text(_healthTrend, style: TextStyle(color: textPrimary.withValues(alpha: 0.6), fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
