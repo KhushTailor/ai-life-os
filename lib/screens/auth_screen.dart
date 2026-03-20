@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
 import '../services/firebase_service.dart';
+import '../providers/providers.dart';
 
-class AuthScreen extends StatefulWidget {
-  final Function(String) onLogin;
-  const AuthScreen({super.key, required this.onLogin});
+class AuthScreen extends ConsumerStatefulWidget {
+  const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _isLoading = false;
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final user = await FirebaseService().signInWithGoogle();
-      if (user != null) {
-        widget.onLogin(user.displayName ?? "User");
-      }
+      final auth = ref.read(firebaseServiceProvider);
+      await auth.signInWithGoogle();
+      // The authStateProvider will automatically update and navigate.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -102,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.g_mobiledata, size: 30, color: Colors.white.withValues(alpha: 0.9)),
+                                  const Icon(Icons.g_mobiledata, size: 30, color: Colors.white),
                                   const SizedBox(width: 12),
                                   Text(
                                     'Continue with Google',

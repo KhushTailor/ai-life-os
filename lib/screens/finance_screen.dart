@@ -1,38 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
 import '../services/firebase_service.dart';
 import '../theme/glass_theme.dart';
 import '../widgets/glass_squircle_fab.dart';
+import '../providers/providers.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-class FinanceScreen extends StatefulWidget {
-  final String uid;
-  final String currency;
-  final GlassTheme activeTheme;
+class FinanceScreen extends ConsumerStatefulWidget {
   final Function(int)? onNavigate;
-  const FinanceScreen({super.key, required this.uid, required this.currency, required this.activeTheme, this.onNavigate});
+  const FinanceScreen({super.key, this.onNavigate});
 
   @override
-  State<FinanceScreen> createState() => _FinanceScreenState();
+  ConsumerState<FinanceScreen> createState() => _FinanceScreenState();
 }
 
-class _FinanceScreenState extends State<FinanceScreen> {
-  final FirebaseService _db = FirebaseService();
+class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   bool _isSearching = false;
   String _searchQuery = '';
   String _filterStatus = 'all'; // 'all', 'income', 'expense'
   final TextEditingController _searchController = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
 
-  bool get _isLight => widget.activeTheme.brightness == Brightness.light;
-  Color get _textPrimary => _isLight ? Colors.black87 : Colors.white;
-  Color get _textSecondary => _isLight ? Colors.black54 : Colors.white70;
-  Color get _textTertiary => _isLight ? Colors.black38 : Colors.white38;
-  Color get _borderColor => _isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(onResult: (val) {
+          if (val.finalResult) {
+            setState(() {
+              _isListening = false;
+              _searchQuery = val.recognizedWords.toLowerCase();
+              _searchController.text = val.recognizedWords;
+              _isSearching = true;
+            });
+          }
+        });
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
 
-  void _addTransaction(List<Map<String, dynamic>> currentTxs) {
+  void _addTransaction(String uid, List<Map<String, dynamic>> currentTxs, String currency, GlassTheme activeTheme) {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     bool isAIProcessing = false;
+    final isLight = activeTheme.brightness == Brightness.light;
+    final borderColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
+    final textPrimary = isLight ? Colors.black87 : Colors.white;
+    final textTertiary = isLight ? Colors.black38 : Colors.white38;
 
     showModalBottomSheet(
       context: context,
@@ -45,25 +66,25 @@ class _FinanceScreenState extends State<FinanceScreen> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _isLight ? Colors.white : const Color(0xFF1A1A2E),
+                color: isLight ? Colors.white : const Color(0xFF1A1A2E),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-                border: Border.all(color: _borderColor),
+                border: Border.all(color: borderColor),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: _isLight ? Colors.grey[300] : Colors.grey[700], borderRadius: BorderRadius.circular(2))),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: isLight ? Colors.grey[300] : Colors.grey[700], borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 20),
-                  Text('New Transaction', style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('New Transaction', style: TextStyle(color: textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   TextField(
                     controller: titleController,
-                    style: TextStyle(color: _textPrimary),
+                    style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Description',
-                      hintStyle: TextStyle(color: _textTertiary),
+                      hintStyle: TextStyle(color: textTertiary),
                       filled: true,
-                      fillColor: (_isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
+                      fillColor: (isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
                   ),
@@ -71,15 +92,15 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(color: _textPrimary),
+                    style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
                       hintText: 'Amount',
-                      hintStyle: TextStyle(color: _textTertiary),
+                      hintStyle: TextStyle(color: textTertiary),
                       filled: true,
-                      fillColor: (_isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
+                      fillColor: (isLight ? Colors.grey[100] : Colors.grey.withValues(alpha: 0.1)),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      prefixText: '${widget.currency} ',
-                      prefixStyle: TextStyle(color: _textPrimary),
+                      prefixText: '$currency ',
+                      prefixStyle: TextStyle(color: textPrimary),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -89,9 +110,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: widget.activeTheme.accentColor)),
+                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: activeTheme.accentColor)),
                           const SizedBox(width: 12),
-                          Text('AI is categorizing...', style: TextStyle(color: _textTertiary, fontSize: 13)),
+                          Text('AI is categorizing...', style: TextStyle(color: textTertiary, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -107,7 +128,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                 final description = titleController.text.trim();
                                 
                                 setModalState(() => isAIProcessing = true);
-                                final category = await _db.getAIExpenseCategory(description);
+                                final category = await ref.read(aiServiceProvider).categorizeExpense(description);
                                 
                                 if (!ctx.mounted) return;
                                 Navigator.pop(ctx);
@@ -119,7 +140,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                   'category': category,
                                   'type': 'income'
                                 });
-                                await _db.syncFinance(widget.uid, updatedList);
+                                debugPrint("SYNCING FINANCE TO CLOUD for $uid: ${updatedList.length} items");
+                                await ref.read(firebaseServiceProvider).syncFinance(uid, updatedList);
                               }
                             },
                             style: OutlinedButton.styleFrom(
@@ -141,7 +163,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                 final description = titleController.text.trim();
 
                                 setModalState(() => isAIProcessing = true);
-                                final category = await _db.getAIExpenseCategory(description);
+                                final category = await ref.read(aiServiceProvider).categorizeExpense(description);
 
                                 if (!ctx.mounted) return;
                                 Navigator.pop(ctx);
@@ -153,11 +175,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                   'category': category,
                                   'type': 'expense'
                                 });
-                                await _db.syncFinance(widget.uid, updatedList);
+                                debugPrint("SYNCING FINANCE TO CLOUD for $uid: ${updatedList.length} items");
+                                await ref.read(firebaseServiceProvider).syncFinance(uid, updatedList);
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: widget.activeTheme.accentColor,
+                              backgroundColor: activeTheme.accentColor,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: const Text('Expense', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -177,115 +200,122 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _db.streamFinance(widget.uid),
-      builder: (context, snapshot) {
-        final txs = snapshot.data ?? [];
-        final isLoading = snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData;
+    final user = ref.watch(authStateProvider).value;
+    final settings = ref.watch(appSettingsProvider).value;
+    final activeTheme = ref.watch(activeThemeProvider);
+    final financeAsync = ref.watch(financeProvider);
+    
+    final uid = user?.uid ?? '';
+    final currency = settings?['currency'] ?? '$';
+    final txs = financeAsync.value ?? [];
+    final isLoading = financeAsync.isLoading && txs.isEmpty;
+    
+    final isLight = activeTheme.brightness == Brightness.light;
+    final textPrimary = isLight ? Colors.black87 : Colors.white;
+    final textSecondary = isLight ? Colors.black54 : Colors.white70;
+    final textTertiary = isLight ? Colors.black38 : Colors.white38;
+    final borderColor = isLight ? Colors.black.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.1);
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              title: _isSearching 
-                ? TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    style: TextStyle(color: _textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Search transactions...',
-                      hintStyle: TextStyle(color: _textTertiary),
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
-                  )
-                : Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.menu, color: _textPrimary),
-                        onPressed: () => widget.onNavigate?.call(5),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('Finance', style: TextStyle(fontWeight: FontWeight.bold, color: _textPrimary, fontSize: 22)),
-                    ],
-                  ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              actions: [
+    if (financeAsync.hasValue) {
+       debugPrint("FINANCE LOADED: ${txs.length} items for $uid");
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: _isSearching 
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: TextStyle(color: textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Search transactions...',
+                hintStyle: TextStyle(color: textTertiary),
+                border: InputBorder.none,
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            )
+          : Row(
+              children: [
                 IconButton(
-                  icon: Icon(_isSearching ? Icons.close : Icons.search_rounded, color: _textPrimary), 
-                  onPressed: () {
-                    setState(() {
-                      if (_isSearching) {
-                        _searchQuery = '';
-                        _searchController.clear();
-                      }
-                      _isSearching = !_isSearching;
-                    });
-                  }
-                ),
-                IconButton(
-                  icon: Icon(Icons.filter_list_rounded, color: _filterStatus != 'all' ? widget.activeTheme.accentColor : _textPrimary), 
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: _isLight ? Colors.white : const Color(0xFF1A1A2E),
-                        title: Text('Filter Transactions', style: TextStyle(color: _textPrimary)),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(title: Text('All', style: TextStyle(color: _textPrimary)), onTap: () { setState(() => _filterStatus = 'all'); Navigator.pop(ctx); }),
-                            ListTile(title: Text('Income Only', style: TextStyle(color: _textPrimary)), onTap: () { setState(() => _filterStatus = 'income'); Navigator.pop(ctx); }),
-                            ListTile(title: Text('Expenses Only', style: TextStyle(color: _textPrimary)), onTap: () { setState(() => _filterStatus = 'expense'); Navigator.pop(ctx); }),
-                          ]
-                        ),
-                      )
-                    );
-                  }
-                ),
-                IconButton(
-                  icon: Icon(Icons.calendar_today_rounded, color: _textPrimary), 
-                  onPressed: () async {
-                    DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                    if (!context.mounted) return;
-                    if (picked != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected date: ${picked.toString().substring(0,10)}')));
-                    }
-                  }
+                  icon: Icon(Icons.menu, color: textPrimary),
+                  onPressed: () => widget.onNavigate?.call(5),
                 ),
                 const SizedBox(width: 8),
-                const SizedBox(width: 8),
+                Text('Finance', style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary, fontSize: 22)),
               ],
-          ),
-          body: _buildBody(txs, isLoading),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-          floatingActionButton: Padding(
-            padding: const EdgeInsets.only(bottom: 100),
-            child: GlassSquircleFab(
-              theme: widget.activeTheme,
-              icon: Icons.add_rounded,
-              onPressed: isLoading ? () {} : () => _addTransaction(txs),
             ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search_rounded, color: textPrimary), 
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+                _isSearching = !_isSearching;
+              });
+            }
           ),
-        );
-      },
+          IconButton(
+            icon: Icon(Icons.filter_list_rounded, color: _filterStatus != 'all' ? activeTheme.accentColor : textPrimary), 
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: isLight ? Colors.white : const Color(0xFF1A1A2E),
+                  title: Text('Filter Transactions', style: TextStyle(color: textPrimary)),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(title: Text('All', style: TextStyle(color: textPrimary)), onTap: () { setState(() => _filterStatus = 'all'); Navigator.pop(ctx); }),
+                      ListTile(title: Text('Income Only', style: TextStyle(color: textPrimary)), onTap: () { setState(() => _filterStatus = 'income'); Navigator.pop(ctx); }),
+                      ListTile(title: Text('Expenses Only', style: TextStyle(color: textPrimary)), onTap: () { setState(() => _filterStatus = 'expense'); Navigator.pop(ctx); }),
+                    ]
+                  ),
+                )
+              );
+            }
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: _buildBody(uid, txs, isLoading, currency, activeTheme, isLight, textPrimary, textSecondary, textTertiary, borderColor),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 90, right: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlassSquircleFab(
+              theme: activeTheme,
+              icon: _isListening ? Icons.mic : Icons.mic_none_rounded,
+              onPressed: _listen,
+              color: _isListening ? Colors.redAccent : activeTheme.accentColor.withValues(alpha: 0.8),
+            ),
+            const SizedBox(height: 16),
+            GlassSquircleFab(
+              theme: activeTheme,
+              icon: Icons.add_rounded,
+              onPressed: (isLoading || uid.isEmpty) ? () {} : () => _addTransaction(uid, txs, currency, activeTheme),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildBody(List<Map<String, dynamic>> txs, bool isLoading) {
+  Widget _buildBody(String uid, List<Map<String, dynamic>> txs, bool isLoading, String currency, GlassTheme theme, bool isLight, Color textPrimary, Color textSecondary, Color textTertiary, Color borderColor) {
     if (isLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: widget.activeTheme.accentColor),
+            CircularProgressIndicator(color: theme.accentColor),
             const SizedBox(height: 20),
-            Text('Restoring finances from cloud...', style: TextStyle(color: _textSecondary, fontSize: 13)),
+            Text('Restoring finances from cloud...', style: TextStyle(color: textSecondary, fontSize: 13)),
           ],
         ),
       );
@@ -306,27 +336,29 @@ class _FinanceScreenState extends State<FinanceScreen> {
       padding: const EdgeInsets.all(20).copyWith(bottom: 180),
       children: [
         _buildGlassCard(
+          theme,
+          borderColor,
           child: Column(
             children: [
-              Text('Net Balance', style: TextStyle(color: _textTertiary, fontSize: 12)),
+              Text('Net Balance', style: TextStyle(color: textTertiary, fontSize: 12)),
               const SizedBox(height: 8),
-              Text('${widget.currency}${(income - expenses).toStringAsFixed(0)}', 
-                style: TextStyle(color: _textPrimary, fontSize: 32, fontWeight: FontWeight.bold)),
+              Text('$currency${(income - expenses).toStringAsFixed(0)}', 
+                style: TextStyle(color: textPrimary, fontSize: 32, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildMiniStat('Income', '${widget.currency}${income.toStringAsFixed(0)}', Colors.greenAccent),
-                  _buildMiniStat('Expenses', '${widget.currency}${expenses.toStringAsFixed(0)}', Colors.redAccent),
+                  _buildMiniStat('Income', '$currency${income.toStringAsFixed(0)}', Colors.greenAccent, textTertiary),
+                  _buildMiniStat('Expenses', '$currency${expenses.toStringAsFixed(0)}', Colors.redAccent, textTertiary),
                 ],
               ),
             ],
           ),
         ),
         const SizedBox(height: 24),
-        _buildSpendingChart(txs),
+        _buildSpendingChart(txs, theme, borderColor, textSecondary),
         const SizedBox(height: 24),
-        Text('AI CATEGORIES', style: TextStyle(color: _textSecondary, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
+        Text('AI CATEGORIES', style: TextStyle(color: textSecondary, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1)),
         const SizedBox(height: 12),
         if (filtered.isEmpty)
           Padding(
@@ -340,35 +372,35 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
+                      color: isLight ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
                     ),
-                    child: Icon(Icons.account_balance_wallet_outlined, size: 60, color: _textPrimary.withValues(alpha: 0.6)),
+                    child: Icon(Icons.account_balance_wallet_outlined, size: 60, color: textPrimary.withValues(alpha: 0.6)),
                   ),
                   const SizedBox(height: 24),
-                  Text(_searchQuery.isNotEmpty ? 'No results found' : 'No transactions yet', style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(_searchQuery.isNotEmpty ? 'No results found' : 'No transactions yet', style: TextStyle(color: textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(_searchQuery.isNotEmpty ? 'Try a different keyword' : "Add your first expense or income", style: TextStyle(color: _textTertiary, fontSize: 14)),
+                  Text(_searchQuery.isNotEmpty ? 'Try a different keyword' : "Add your first expense or income", style: TextStyle(color: textTertiary, fontSize: 14)),
                 ],
               ),
             ),
           )
         else
-          ...filtered.reversed.map((tx) => _buildTransactionItem(tx, txs.indexOf(tx), txs)),
+          ...filtered.reversed.map((tx) => _buildTransactionItem(uid, tx, txs.indexOf(tx), txs, currency, theme, isLight, textPrimary, borderColor)),
       ],
     );
   }
 
-  Widget _buildGlassCard({required Widget child}) {
+  Widget _buildGlassCard(GlassTheme theme, Color borderColor, {required Widget child}) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
+      borderRadius: BorderRadius.circular(theme.cardBorderRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: widget.activeTheme.blur, sigmaY: widget.activeTheme.blur),
+        filter: ImageFilter.blur(sigmaX: theme.blur, sigmaY: theme.blur),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: widget.activeTheme.cardGradient),
-            borderRadius: BorderRadius.circular(widget.activeTheme.cardBorderRadius),
-            border: Border.all(color: _borderColor),
+            gradient: LinearGradient(colors: theme.cardGradient),
+            borderRadius: BorderRadius.circular(theme.cardBorderRadius),
+            border: Border.all(color: borderColor),
           ),
           child: child,
         ),
@@ -376,28 +408,29 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
-  Widget _buildMiniStat(String label, String value, Color color) {
+  Widget _buildMiniStat(String label, String value, Color color, Color textTertiary) {
     return Column(
       children: [
-        Text(label, style: TextStyle(color: _textTertiary, fontSize: 11)),
+        Text(label, style: TextStyle(color: textTertiary, fontSize: 11)),
         const SizedBox(height: 4),
         Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
       ],
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> tx, int index, List<Map<String, dynamic>> allTxs) {
+  Widget _buildTransactionItem(String uid, Map<String, dynamic> tx, int index, List<Map<String, dynamic>> allTxs, String currency, GlassTheme theme, bool isLight, Color textPrimary, Color borderColor) {
     final amount = tx['amount'] ?? 0;
     final isExpense = amount < 0;
     final category = tx['category'] ?? 'Other';
+    final textTertiary = isLight ? Colors.black38 : Colors.white38;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
+        color: isLight ? Colors.black.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
@@ -410,8 +443,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(tx['title'] ?? 'Unknown', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
-                Text(category.toUpperCase(), style: TextStyle(color: widget.activeTheme.accentColor.withValues(alpha: 0.7), fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
+                Text(tx['title'] ?? 'Unknown', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold)),
+                Text(category.toUpperCase(), style: TextStyle(color: theme.accentColor.withValues(alpha: 0.7), fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -419,18 +452,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${isExpense ? '-' : '+'}${widget.currency}${amount.abs().toStringAsFixed(0)}',
+                '${isExpense ? '-' : '+'}$currency${amount.abs().toStringAsFixed(0)}',
                 style: TextStyle(color: isExpense ? Colors.redAccent : Colors.greenAccent, fontWeight: FontWeight.bold),
               ),
               GestureDetector(
                 onTap: () {
                   final updated = List<Map<String, dynamic>>.from(allTxs);
                   updated.removeAt(index);
-                  _db.syncFinance(widget.uid, updated);
+                  ref.read(firebaseServiceProvider).syncFinance(uid, updated);
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(top: 4.0),
-                  child: Icon(Icons.delete_outline, size: 14, color: _textTertiary),
+                  child: Icon(Icons.delete_outline, size: 14, color: textTertiary),
                 ),
               ),
             ],
@@ -440,7 +473,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     );
   }
 
-  Widget _buildSpendingChart(List<Map<String, dynamic>> txs) {
+  Widget _buildSpendingChart(List<Map<String, dynamic>> txs, GlassTheme theme, Color borderColor, Color textSecondary) {
     Map<String, double> categories = {};
     for (var tx in txs) {
       if ((tx['amount'] ?? 0) < 0) {
@@ -452,10 +485,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
     if (categories.isEmpty) return const SizedBox.shrink();
 
     return _buildGlassCard(
+      theme,
+      borderColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('SPENDING BREAKDOWN', style: TextStyle(color: _textSecondary, fontSize: 10, letterSpacing: 2)),
+          Text('SPENDING BREAKDOWN', style: TextStyle(color: textSecondary, fontSize: 10, letterSpacing: 2)),
           const SizedBox(height: 24),
           SizedBox(
             height: 150,

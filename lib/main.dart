@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
 import 'services/firebase_service.dart';
 import 'theme/glass_theme.dart';
@@ -15,10 +16,8 @@ import 'screens/settings_screen.dart';
 import 'screens/focus_screen.dart';
 import 'screens/insights_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'widgets/voice_assistant_overlay.dart';
-import 'services/voice_service.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +36,6 @@ void main() async {
     await Firebase.initializeApp();
   }
 
-  // Enable Firestore local disk cache for offline resilience
   await FirebaseService.enablePersistence();
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -45,31 +43,29 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
     systemNavigationBarColor: Colors.black,
   ));
-  runApp(const LifeOSApp());
+  
+  runApp(
+    const ProviderScope(
+      child: LifeOSApp(),
+    ),
+  );
 }
 
-class LifeOSApp extends StatefulWidget {
+class LifeOSApp extends ConsumerStatefulWidget {
   const LifeOSApp({super.key});
 
   @override
-  State<LifeOSApp> createState() => _LifeOSAppState();
+  ConsumerState<LifeOSApp> createState() => _LifeOSAppState();
 }
 
-class _LifeOSAppState extends State<LifeOSApp> {
-  String? _userName;
-  String? _uid;
+class _LifeOSAppState extends ConsumerState<LifeOSApp> {
   int _selectedIndex = 0;
-  String _activeThemeKey = 'nebula_deep';
-  String _currency = '\$';
-  bool _isLoading = true;
   bool _isFirstTime = false;
 
   @override
   void initState() {
     super.initState();
     _checkFirstTime();
-    _checkAuth();
-    _loadPreferences();
   }
 
   Future<void> _checkFirstTime() async {
@@ -85,258 +81,50 @@ class _LifeOSAppState extends State<LifeOSApp> {
     setState(() => _isFirstTime = false);
   }
 
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Initial fetch from SharedPreferences
-    String? localTheme = prefs.getString('theme');
-    String? localCurrency = prefs.getString('currency');
-
-    if (mounted) {
-      setState(() {
-        _activeThemeKey = localTheme ?? 'nebula_deep';
-        _currency = localCurrency ?? '\$';
-      });
-    }
-
-    // If logged in but local prefs are missing, try to restore from Firestore
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && (localTheme == null || localCurrency == null)) {
-      _restoreSettingsFromFirestore(user.uid);
-    }
-  }
-
-  Future<void> _restoreSettingsFromFirestore(String uid) async {
-    try {
-      final userData = await FirebaseService().getUserData(uid);
-      if (userData != null) {
-        final prefs = await SharedPreferences.getInstance();
-        
-        String? cloudTheme = userData['theme'];
-        String? cloudCurrency = userData['currency'];
-        String? cloudName = userData['name'];
-        String? cloudApiKey = userData['gemini_api_key'];
-
-        if (mounted) {
-          setState(() {
-            if (cloudTheme != null) {
-              _activeThemeKey = cloudTheme;
-              prefs.setString('theme', cloudTheme);
-            }
-            if (cloudCurrency != null) {
-              _currency = cloudCurrency;
-              prefs.setString('currency', cloudCurrency);
-            }
-            if (cloudName != null) {
-              _userName = cloudName;
-            }
-            if (cloudApiKey != null) {
-              prefs.setString('gemini_api_key', cloudApiKey);
-            }
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Error restoring settings: $e");
-    }
-  }
-
-  void _checkAuth() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      if (mounted) {
-        setState(() {
-          _userName = user.displayName ?? "User";
-          _uid = user.uid;
-        });
-      }
-    }
-  }
-
-  void _onThemeChanged(String themeKey) async {
-    setState(() {
-      _activeThemeKey = themeKey;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme', themeKey);
-    
-    if (_uid != null) {
-      await FirebaseService().syncProfile(_uid!, {'theme': themeKey});
-    }
-  }
-
-  void _onCurrencyChanged(String symbol) async {
-    setState(() {
-      _currency = symbol;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('currency', symbol);
-
-    if (_uid != null) {
-      await FirebaseService().syncProfile(_uid!, {'currency': symbol});
-    }
-  }
-
-  Future<void> _logout() async {
-    await FirebaseService().signOut();
-    setState(() { _userName = null; _uid = null; });
-  }
-
-  void _handleVoiceCommand(VoiceCommand command) async {
-    if (_uid == null) return;
-
-    switch (command.intent) {
-      case VoiceIntent.navigate:
-        if (command.payload != null) {
-          int index = int.parse(command.payload!);
-          setState(() => _selectedIndex = index);
-        }
-        break;
-      case VoiceIntent.changeTheme:
-        if (command.payload != null) {
-          _onThemeChanged(command.payload!);
-        }
-        break;
-      case VoiceIntent.addTask:
-        if (command.payload != null && command.payload!.isNotEmpty) {
-          final tasks = await FirebaseService().streamTasks(_uid!).first;
-          final updated = List<Map<String, dynamic>>.from(tasks);
-          updated.add({'title': command.payload, 'completed': false, 'time': 'Anytime'});
-          await FirebaseService().syncTasks(_uid!, updated);
-          _showToast('Task added: ${command.payload}');
-        }
-        break;
-      case VoiceIntent.addHabit:
-        if (command.payload != null && command.payload!.isNotEmpty) {
-          final habits = await FirebaseService().streamHabits(_uid!).first;
-          final updated = List<Map<String, dynamic>>.from(habits);
-          updated.add({'name': command.payload, 'category': 'General', 'status': 'todo', 'streak': 0});
-          await FirebaseService().syncHabits(_uid!, updated);
-          _showToast('Habit started: ${command.payload}');
-        }
-        break;
-      case VoiceIntent.addExpense:
-        if (command.data != null) {
-          final finance = await FirebaseService().streamFinance(_uid!).first;
-          final updated = List<Map<String, dynamic>>.from(finance);
-          updated.add({
-            'title': command.data!['title'] ?? 'Voice Expense',
-            'amount': command.data!['amount'],
-            'date': 'Today',
-            'category': 'Other'
-          });
-          await FirebaseService().syncFinance(_uid!, updated);
-          _showToast('Expense logged: ${command.data!['amount']}');
-        }
-        break;
-      case VoiceIntent.startFocus:
-        setState(() => _selectedIndex = 6);
-        _showToast('Focus session started for ${command.payload ?? 25} minutes.');
-        break;
-      case VoiceIntent.askAI:
-        setState(() => _selectedIndex = 1); // Go to AI Chat
-        _showToast('Asking AI...');
-        break;
-      case VoiceIntent.queryData:
-        if (command.payload == 'tasks') {
-          final tasks = await FirebaseService().streamTasks(_uid!).first;
-          final count = tasks.where((t) => t['completed'] == false).length;
-          _showToast('You have $count pending tasks.');
-        } else if (command.payload == 'finance') {
-          final finance = await FirebaseService().streamFinance(_uid!).first;
-          final total = finance.where((tx) => (tx['amount'] ?? 0) < 0).fold(0.0, (s, t) => s + (t['amount'] as double).abs());
-          _showToast('Total expenses: \$${total.toStringAsFixed(2)}');
-        }
-        break;
-      case VoiceIntent.unknown:
-        _showToast('Command not recognized: ${command.payload}');
-        break;
-    }
-  }
-
-  void _showToast(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.black.withOpacity(0.8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _buildCurrentScreen(GlassTheme theme) {
+  Widget _buildCurrentScreen(User? user) {
     if (_isFirstTime) {
       return OnboardingScreen(onFinished: _onOnboardingFinished);
     }
 
-    if (_userName == null || _uid == null) {
-      return AuthScreen(
-        onLogin: (name) async {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null) {
-            setState(() {
-              _userName = name;
-              _uid = user.uid;
-              _selectedIndex = 0;
-            });
-            // Immediately sync name and restore rest
-            await FirebaseService().syncProfile(user.uid, {'name': name});
-            await _restoreSettingsFromFirestore(user.uid);
-          }
-        },
-      );
+    if (user == null) {
+      return const AuthScreen();
     }
 
+    debugPrint("NAVIGATING TO SCREEN: $_selectedIndex");
     switch (_selectedIndex) {
       case 0:
         return DashboardScreen(
-          userName: _userName!,
-          uid: _uid!,
-          activeTheme: theme,
-          currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
-          onLogout: _logout,
+          onLogout: () => ref.read(firebaseServiceProvider).signOut(),
         );
       case 1:
-        return ChatScreen(userName: _userName!, activeTheme: theme);
+        return const ChatScreen();
       case 2:
-        return PlannerScreen(uid: _uid!, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
+        return PlannerScreen(onNavigate: (index) => setState(() => _selectedIndex = index));
       case 3:
-        return HabitScreen(uid: _uid!, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
+        return HabitScreen(onNavigate: (index) => setState(() => _selectedIndex = index));
       case 4:
-        return FinanceScreen(uid: _uid!, currency: _currency, activeTheme: theme, onNavigate: (index) => setState(() => _selectedIndex = index));
+        return FinanceScreen(onNavigate: (index) => setState(() => _selectedIndex = index));
       case 5:
         return SettingsScreen(
-          activeTheme: _activeThemeKey,
-          onThemeChanged: _onThemeChanged,
-          userName: _userName!,
-          currency: _currency,
-          onCurrencyChanged: _onCurrencyChanged,
-          onLogout: _logout,
+          onLogout: () => ref.read(firebaseServiceProvider).signOut(),
         );
       case 6:
-        return FocusScreen(activeTheme: theme);
+        return const FocusScreen();
       case 7:
-        return InsightsScreen(uid: _uid!, theme: theme);
+        return const InsightsScreen();
       default:
-
         return DashboardScreen(
-          userName: _userName!,
-          uid: _uid!,
-          activeTheme: theme,
-          currency: _currency,
           onNavigate: (index) => setState(() => _selectedIndex = index),
-          onLogout: _logout,
+          onLogout: () => ref.read(firebaseServiceProvider).signOut(),
         );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = GlassTheme.themes[_activeThemeKey] ?? GlassTheme.themes['nebula_deep']!;
-
+    final theme = ref.watch(activeThemeProvider);
+    final user = ref.watch(authStateProvider).value;
     final isLight = theme.brightness == Brightness.light;
 
     return MaterialApp(
@@ -350,7 +138,6 @@ class _LifeOSAppState extends State<LifeOSApp> {
       ),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        // extendBody: true allows content to scroll BEHIND the floating bottom bar
         extendBody: true,
         body: Container(
           decoration: BoxDecoration(
@@ -362,18 +149,13 @@ class _LifeOSAppState extends State<LifeOSApp> {
           ),
           child: Stack(
             children: [
-              _buildCurrentScreen(theme),
-              if (_userName != null)
+              _buildCurrentScreen(user),
+              if (user != null && !_isFirstTime)
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: 0,
                   child: _buildFloatingNavBar(theme),
-                ),
-              if (_userName != null)
-                VoiceAssistantOverlay(
-                  theme: theme,
-                  onCommand: _handleVoiceCommand,
                 ),
             ],
           ),
