@@ -4,6 +4,7 @@ import '../services/firebase_service.dart';
 import '../services/ai_service.dart';
 import '../theme/glass_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 // Services
 final firebaseServiceProvider = Provider((ref) => FirebaseService());

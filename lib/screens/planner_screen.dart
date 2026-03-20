@@ -251,7 +251,6 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                 theme: activeTheme,
                 icon: _isListening ? Icons.mic : Icons.mic_none_rounded,
                 onPressed: _listen,
-                color: _isListening ? Colors.redAccent : activeTheme.accentColor.withValues(alpha: 0.8),
               ),
               const SizedBox(height: 16),
               GlassSquircleFab(

@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:ui';
-import '../theme/glass_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/providers.dart';
 import 'zen_screen.dart';
 
-class FocusScreen extends StatefulWidget {
-  final GlassTheme activeTheme;
-  const FocusScreen({super.key, required this.activeTheme});
+class FocusScreen extends ConsumerStatefulWidget {
+  const FocusScreen({super.key});
 
   @override
-  State<FocusScreen> createState() => _FocusScreenState();
+  ConsumerState<FocusScreen> createState() => _FocusScreenState();
 }
 
-class _FocusScreenState extends State<FocusScreen> {
+class _FocusScreenState extends ConsumerState<FocusScreen> {
   int _secondsRemaining = 25 * 60; // 25 minutes default
   Timer? _timer;
   bool _isRunning = false;
@@ -57,6 +56,8 @@ class _FocusScreenState extends State<FocusScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeTheme = ref.watch(activeThemeProvider);
+    
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -66,8 +67,8 @@ class _FocusScreenState extends State<FocusScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              widget.activeTheme.backgroundGradient[0].withValues(alpha: 0.8),
-              widget.activeTheme.backgroundGradient[1].withValues(alpha: 0.9),
+              activeTheme.backgroundGradient[0].withValues(alpha: 0.8),
+              activeTheme.backgroundGradient[1].withValues(alpha: 0.9),
             ],
           ),
         ),
@@ -120,7 +121,7 @@ class _FocusScreenState extends State<FocusScreen> {
                 _buildControlButton(
                   icon: _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   onTap: _toggleTimer,
-                  color: widget.activeTheme.accentColor,
+                  color: activeTheme.accentColor,
                   isLarge: true,
                 ),
                 const SizedBox(width: 30),
@@ -137,15 +138,15 @@ class _FocusScreenState extends State<FocusScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ZenScreen(theme: widget.activeTheme)),
+                  MaterialPageRoute(builder: (context) => ZenScreen(theme: activeTheme)),
                 );
               },
               icon: const Icon(Icons.self_improvement_rounded, color: Colors.white),
               label: const Text('GO ZEN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.1),
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withOpacity(0.1))),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
               ),
             ),
             const SizedBox(height: 40),

@@ -201,12 +201,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).value;
-    final settings = ref.watch(appSettingsProvider).value;
+    final settings = ref.watch(settingsProvider);
     final activeTheme = ref.watch(activeThemeProvider);
     final financeAsync = ref.watch(financeProvider);
     
     final uid = user?.uid ?? '';
-    final currency = settings?['currency'] ?? '$';
+    final currency = settings.currency;
     final txs = financeAsync.value ?? [];
     final isLoading = financeAsync.isLoading && txs.isEmpty;
     
@@ -293,7 +293,6 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               theme: activeTheme,
               icon: _isListening ? Icons.mic : Icons.mic_none_rounded,
               onPressed: _listen,
-              color: _isListening ? Colors.redAccent : activeTheme.accentColor.withValues(alpha: 0.8),
             ),
             const SizedBox(height: 16),
             GlassSquircleFab(
